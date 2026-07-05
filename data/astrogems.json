@@ -1,0 +1,92 @@
+{
+  "67401024": {
+    "id": 67401024,
+    "name": "Order Astrogem: Stability",
+    "baseCost": 8
+  },
+  "67401025": {
+    "id": 67401025,
+    "name": "Order Astrogem: Stability",
+    "baseCost": 8
+  },
+  "67401026": {
+    "id": 67401026,
+    "name": "Order Astrogem: Stability",
+    "baseCost": 8
+  },
+  "67401124": {
+    "id": 67401124,
+    "name": "Order Astrogem: Solidity",
+    "baseCost": 9
+  },
+  "67401125": {
+    "id": 67401125,
+    "name": "Order Astrogem: Solidity",
+    "baseCost": 9
+  },
+  "67401126": {
+    "id": 67401126,
+    "name": "Order Astrogem: Solidity",
+    "baseCost": 9
+  },
+  "67401224": {
+    "id": 67401224,
+    "name": "Order Astrogem: Immutability",
+    "baseCost": 10
+  },
+  "67401225": {
+    "id": 67401225,
+    "name": "Order Astrogem: Immutability",
+    "baseCost": 10
+  },
+  "67401226": {
+    "id": 67401226,
+    "name": "Order Astrogem: Immutability",
+    "baseCost": 10
+  },
+  "67411324": {
+    "id": 67411324,
+    "name": "Chaos Astrogem: Corrosion",
+    "baseCost": 8
+  },
+  "67411325": {
+    "id": 67411325,
+    "name": "Chaos Astrogem: Corrosion",
+    "baseCost": 8
+  },
+  "67411326": {
+    "id": 67411326,
+    "name": "Chaos Astrogem: Corrosion",
+    "baseCost": 8
+  },
+  "67411424": {
+    "id": 67411424,
+    "name": "Chaos Astrogem: Distortion",
+    "baseCost": 9
+  },
+  "67411425": {
+    "id": 67411425,
+    "name": "Chaos Astrogem: Distortion",
+    "baseCost": 9
+  },
+  "67411426": {
+    "id": 67411426,
+    "name": "Chaos Astrogem: Distortion",
+    "baseCost": 9
+  },
+  "67411524": {
+    "id": 67411524,
+    "name": "Chaos Astrogem: Destruction",
+    "baseCost": 10
+  },
+  "67411525": {
+    "id": 67411525,
+    "name": "Chaos Astrogem: Destruction",
+    "baseCost": 10
+  },
+  "67411526": {
+    "id": 67411526,
+    "name": "Chaos Astrogem: Destruction",
+    "baseCost": 10
+  }
+}

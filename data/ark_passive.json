@@ -1,0 +1,499 @@
+{
+  "evolution": {
+    "1020100": {
+      "id": 1020100,
+      "name": "Boundless MP",
+      "tier": 2
+    },
+    "1020600": {
+      "id": 1020600,
+      "name": "Goddess of Blessings",
+      "tier": 2
+    },
+    "1030100": {
+      "id": 1030100,
+      "name": "Unlimited Magick",
+      "tier": 3
+    },
+    "1030600": {
+      "id": 1030600,
+      "name": "Passionate Dance",
+      "tier": 3
+    },
+    "1032400": {
+      "id": 1032400,
+      "name": "Luminary",
+      "tier": 4
+    },
+    "1032500": {
+      "id": 1032500,
+      "name": "Advance",
+      "tier": 4
+    },
+    "1032600": {
+      "id": 1032600,
+      "name": "Prayer",
+      "tier": 4
+    }
+  },
+  "enlightenment": {
+    "2210000": {
+      "id": 2210000,
+      "name": "Perfect Harmony",
+      "tier": 1,
+      "type": "main",
+      "support": true
+    },
+    "2210100": {
+      "id": 2210100,
+      "name": "True Courage",
+      "tier": 1,
+      "type": "main",
+      "support": false
+    },
+    "2210200": {
+      "id": 2210200,
+      "name": "Desperate Salvation",
+      "tier": 2,
+      "type": "main",
+      "support": true
+    },
+    "2210300": {
+      "id": 2210300,
+      "name": "Hymn: Tempest",
+      "tier": 2,
+      "type": "main",
+      "support": false
+    },
+    "2210400": {
+      "id": 2210400,
+      "name": "Serenade of Tolerance",
+      "tier": 3,
+      "type": "side",
+      "support": true
+    },
+    "2210500": {
+      "id": 2210500,
+      "name": "Serenade of Amplification",
+      "tier": 3,
+      "type": "main",
+      "support": true
+    },
+    "2210600": {
+      "id": 2210600,
+      "name": "Maestro",
+      "tier": 3,
+      "type": "main",
+      "support": false
+    },
+    "2210700": {
+      "id": 2210700,
+      "name": "Hymn of Combat",
+      "tier": 3,
+      "type": "side",
+      "support": false
+    },
+    "2210800": {
+      "id": 2210800,
+      "name": "Serenade of Branding",
+      "tier": 4,
+      "type": "side",
+      "support": true
+    },
+    "2210900": {
+      "id": 2210900,
+      "name": "Serenade of Secrets",
+      "tier": 4,
+      "type": "main",
+      "support": true
+    },
+    "2211000": {
+      "id": 2211000,
+      "name": "Stormfield",
+      "tier": 4,
+      "type": "main",
+      "support": false
+    },
+    "2211100": {
+      "id": 2211100,
+      "name": "Mad Dash",
+      "tier": 4,
+      "type": "side",
+      "support": false
+    },
+    "2360000": {
+      "id": 2360000,
+      "name": "Divine Knight",
+      "tier": 1,
+      "type": "main",
+      "support": false
+    },
+    "2360010": {
+      "id": 2360010,
+      "name": "Holy Protection",
+      "tier": 1,
+      "type": "main",
+      "support": true
+    },
+    "2360020": {
+      "id": 2360020,
+      "name": "Piety Training",
+      "tier": 2,
+      "type": "main",
+      "support": false
+    },
+    "2360030": {
+      "id": 2360030,
+      "name": "Blessed Aura",
+      "tier": 2,
+      "type": "main",
+      "support": true
+    },
+    "2360040": {
+      "id": 2360040,
+      "name": "Prelude of Punishment",
+      "tier": 3,
+      "type": "side",
+      "support": false
+    },
+    "2360050": {
+      "id": 2360050,
+      "name": "Judgment",
+      "tier": 3,
+      "type": "main",
+      "support": false
+    },
+    "2360060": {
+      "id": 2360060,
+      "name": "Godly Grace",
+      "tier": 3,
+      "type": "main",
+      "support": true
+    },
+    "2360070": {
+      "id": 2360070,
+      "name": "Bold Salvation",
+      "tier": 3,
+      "type": "side",
+      "support": true
+    },
+    "2360080": {
+      "id": 2360080,
+      "name": "Protective Judgement",
+      "tier": 4,
+      "type": "side",
+      "support": false
+    },
+    "2360090": {
+      "id": 2360090,
+      "name": "Blessing of Judgment",
+      "tier": 4,
+      "type": "main",
+      "support": false
+    },
+    "2360100": {
+      "id": 2360100,
+      "name": "Divine Liberation",
+      "tier": 4,
+      "type": "main",
+      "support": true
+    },
+    "2360110": {
+      "id": 2360110,
+      "name": "Light's Vestige",
+      "tier": 4,
+      "type": "side",
+      "support": true
+    },
+    "2480000": {
+      "id": 2480000,
+      "name": "Shining Knight",
+      "tier": 1,
+      "type": "main",
+      "support": false
+    },
+    "2480100": {
+      "id": 2480100,
+      "name": "Liberator",
+      "tier": 1,
+      "type": "main",
+      "support": true
+    },
+    "2480200": {
+      "id": 2480200,
+      "name": "Sword Training",
+      "tier": 2,
+      "type": "main",
+      "support": false
+    },
+    "2480300": {
+      "id": 2480300,
+      "name": "Vitality",
+      "tier": 2,
+      "type": "main",
+      "support": true
+    },
+    "2480400": {
+      "id": 2480400,
+      "name": "Light's Bond",
+      "tier": 3,
+      "type": "side",
+      "support": false
+    },
+    "2480500": {
+      "id": 2480500,
+      "name": "Holy Sword Unleashed",
+      "tier": 3,
+      "type": "main",
+      "support": false
+    },
+    "2480600": {
+      "id": 2480600,
+      "name": "Divine Plan",
+      "tier": 3,
+      "type": "main",
+      "support": true
+    },
+    "2480700": {
+      "id": 2480700,
+      "name": "Brilliant Bladecraft",
+      "tier": 3,
+      "type": "side",
+      "support": true
+    },
+    "2480800": {
+      "id": 2480800,
+      "name": "Last Light",
+      "tier": 4,
+      "type": "side",
+      "support": false
+    },
+    "2480900": {
+      "id": 2480900,
+      "name": "Trinity",
+      "tier": 4,
+      "type": "main",
+      "support": false
+    },
+    "2481000": {
+      "id": 2481000,
+      "name": "Wings of Freedom",
+      "tier": 4,
+      "type": "main",
+      "support": true
+    },
+    "2481100": {
+      "id": 2481100,
+      "name": "Liberator's Sign",
+      "tier": 4,
+      "type": "side",
+      "support": true
+    },
+    "2310000": {
+      "id": 2310000,
+      "name": "Setting Moon",
+      "tier": 1,
+      "type": "main",
+      "support": true
+    },
+    "2310100": {
+      "id": 2310100,
+      "name": "Full Bloom",
+      "tier": 2,
+      "type": "main",
+      "support": true
+    },
+    "2310200": {
+      "id": 2310200,
+      "name": "Twin Shield",
+      "tier": 3,
+      "type": "side",
+      "support": true
+    },
+    "2310300": {
+      "id": 2310300,
+      "name": "Blessing of the Sun",
+      "tier": 3,
+      "type": "main",
+      "support": true
+    },
+    "2310400": {
+      "id": 2310400,
+      "name": "Brand Enhancement",
+      "tier": 4,
+      "type": "side",
+      "support": true
+    },
+    "2310500": {
+      "id": 2310500,
+      "name": "Paint: Combat Technique",
+      "tier": 4,
+      "type": "main",
+      "support": true
+    },
+    "2310600": {
+      "id": 2310600,
+      "name": "Recurrence",
+      "tier": 1,
+      "type": "main",
+      "support": false
+    },
+    "2310700": {
+      "id": 2310700,
+      "name": "Rising Moon",
+      "tier": 2,
+      "type": "main",
+      "support": false
+    },
+    "2310800": {
+      "id": 2310800,
+      "name": "Lunar Blessing",
+      "tier": 3,
+      "type": "main",
+      "support": false
+    },
+    "2310900": {
+      "id": 2310900,
+      "name": "Moon Shadow",
+      "tier": 3,
+      "type": "side",
+      "support": false
+    },
+    "2311000": {
+      "id": 2311000,
+      "name": "Paint: Shattering Strike",
+      "tier": 4,
+      "type": "main",
+      "support": false
+    },
+    "2311100": {
+      "id": 2311100,
+      "name": "Artistry",
+      "tier": 4,
+      "type": "side",
+      "support": false
+    }
+  },
+  "leap": {
+    "2165400": {
+      "id": 2165400,
+      "name": "Release Potential"
+    },
+    "2175400": {
+      "id": 2175400,
+      "name": "Release Potential"
+    },
+    "2185400": {
+      "id": 2185400,
+      "name": "Release Potential"
+    },
+    "2195400": {
+      "id": 2195400,
+      "name": "Release Potential"
+    },
+    "2205400": {
+      "id": 2205400,
+      "name": "Release Potential"
+    },
+    "2215400": {
+      "id": 2215400,
+      "name": "Release Potential"
+    },
+    "2225400": {
+      "id": 2225400,
+      "name": "Release Potential"
+    },
+    "2235400": {
+      "id": 2235400,
+      "name": "Release Potential"
+    },
+    "2245400": {
+      "id": 2245400,
+      "name": "Release Potential"
+    },
+    "2255400": {
+      "id": 2255400,
+      "name": "Release Potential"
+    },
+    "2265400": {
+      "id": 2265400,
+      "name": "Release Potential"
+    },
+    "2275400": {
+      "id": 2275400,
+      "name": "Release Potential"
+    },
+    "2285400": {
+      "id": 2285400,
+      "name": "Release Potential"
+    },
+    "2295400": {
+      "id": 2295400,
+      "name": "Release Potential"
+    },
+    "2305400": {
+      "id": 2305400,
+      "name": "Release Potential"
+    },
+    "2315400": {
+      "id": 2315400,
+      "name": "Release Potential"
+    },
+    "2325400": {
+      "id": 2325400,
+      "name": "Release Potential"
+    },
+    "2335400": {
+      "id": 2335400,
+      "name": "Release Potential"
+    },
+    "2345400": {
+      "id": 2345400,
+      "name": "Release Potential"
+    },
+    "2355400": {
+      "id": 2355400,
+      "name": "Release Potential"
+    },
+    "2365400": {
+      "id": 2365400,
+      "name": "Release Potential"
+    },
+    "2375400": {
+      "id": 2375400,
+      "name": "Release Potential"
+    },
+    "2385400": {
+      "id": 2385400,
+      "name": "Release Potential"
+    },
+    "2395400": {
+      "id": 2395400,
+      "name": "Release Potential"
+    },
+    "2455400": {
+      "id": 2455400,
+      "name": "Release Potential"
+    },
+    "2465400": {
+      "id": 2465400,
+      "name": "Release Potential"
+    },
+    "2475400": {
+      "id": 2475400,
+      "name": "Release Potential"
+    },
+    "2485400": {
+      "id": 2485400,
+      "name": "Release Potential"
+    },
+    "2495400": {
+      "id": 2495400,
+      "name": "Release Potential"
+    },
+    "2315600": {
+      "id": 2315600,
+      "name": "Dragon Gem"
+    }
+  }
+}

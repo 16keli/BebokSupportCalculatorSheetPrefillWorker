@@ -1,0 +1,29 @@
+{
+  "key": "bebok-3.8.1",
+  "source": "loadout",
+  "version": { "supported": "v3" },
+  "comment": "Build/loadout page (the `full = {...}` SvelteKit var). Separate page from the snapshot - it carries avatar/skin items the snapshot lacks. root = the loadouts array; loadouts[0] is the active build. NOTE: urlTemplate is the support's loadout page; {hash} is the entity loadoutHash. It is left EMPTY by default because the exact lostark.bible loadout URL is unverified - set it to enable loadout fetching (candidate: https://lostark.bible/character/loadout/{hash}). While empty, the worker skips the loadout fetch and these fields are simply not produced (their cells stay blank).",
+  "urlTemplate": "",
+  "rootPath": "data[2].loadouts",
+  "rootPathFallbacks": ["data[1].loadouts", "data[1].data.loadouts", "data[0].loadouts"],
+  "refData": ["legendary_skin_ids"],
+  "intermediates": [
+    {
+      "id": "legendarySkins",
+      "expr": "new Set(ref.legendary_skin_ids||[])",
+      "comment": "Set of legendary skin item ids, bundled from data/legendary_skin_ids.json"
+    },
+    {
+      "id": "activeLoadout",
+      "expr": "root[0]",
+      "comment": "loadouts[0] = the active build"
+    }
+  ],
+  "fields": [
+    {
+      "id": "skinBonusFromLoadout",
+      "exprFile": "expr/skinBonusFromLoadout.ts",
+      "comment": "Auto-detected legendary-skin count (0-4) across the 4 main avatar slots. Superseded by the manual `skinBonus` advanced input (-> F18); kept (unbound) for when loadout fetching is enabled. Renamed from skinBonus to avoid colliding with that input-driven snapshot field."
+    }
+  ]
+}

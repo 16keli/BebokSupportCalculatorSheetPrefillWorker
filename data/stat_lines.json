@@ -1,0 +1,111 @@
+{
+  "_comment": "Pattern-match lookup mapping a snapshot stat-line to the text written for accessory & bracelet effect lines. KEYS: use \"<index>:<type>\" when a stat's meaning depends on its type (statLineText.js prefers this), else \"<index>\" alone for stats whose meaning is consistent across types - e.g. index 0 is ally-attack as a ring line (type 54 -> key \"0:54\") but means something different as a type-50 line (key \"0:50\"), while 151/16000001 are type-independent. Each entry is { text, scale?, decimals?, placeholder? }: `text` is the literal cell value, an optional `{value}` placeholder is replaced by the stat's `value` multiplied by `scale` (default 1); `decimals` fixes the number of decimal places (e.g. ring ally-damage uses 2 -> \"7.50\") while omitting it trims trailing zeros and rounds to at most 3 dp (e.g. bracelet -> \"7.5\" or \"9\"); and `placeholder:true` flags entries whose exact in-game/sheet string is not yet known (grep 'placeholder' to find them - replace `text` with the real string; no code change needed). Consumed by the SHEET via the statLineText.js cell transform. Covers the bracelet stat table in planning/sheetFillingPlanning.md (tiers are High>Mid>Low). The fixed base attributes (spec 16, swift 18, the main stats 3/4/5/6, and the other combat stats 15/17/19/20) are NOT lines - statLineText.js drops them (base:true on accessories, else the BASE_STATS index set) so the rolled lines pack in item order, while their values go to their own cells via braceletSpec/braceletSwift/braceletMain and necklaceMain/ear*Main/ring*Main.",
+  "151": {
+    "text": "Weapon Power 480"
+  },
+  "bracelet:151": {
+    "text": "Weapon Power +{value}"
+  },
+  "ring:16000001": {
+    "text": "Ally Damage Enh. {value}%",
+    "scale": 0.01,
+    "decimals": 2
+  },
+  "bracelet:16000001": {
+    "text": "Ally Damage Enhancement Effect +{value}%",
+    "scale": 0.01
+  },
+  "ring:0:54": {
+    "text": "Ally Atk. Power Enh. {value}%",
+    "scale": 0.01,
+    "decimals": 2,
+    "comment": "Ring ally-attack line (index 0, type 54). The ring section uses the abbreviated wording."
+  },
+  "bracelet:0": {
+    "text": "Ally Atk. Power Enhancement Effect +{value}%",
+    "scale": 0.01,
+    "comment": "Bracelet ally-attack line (index 0). The bracelet section uses the full wording."
+  },
+  "11091": {
+    "text": "On hit, target's Crit Damage -4.8% for 8s. Ally Atk. Power Enhancement +3.0%."
+  },
+  "11092": {
+    "text": "On hit, target's Crit Damage -4.2% for 8s. Ally Atk. Power Enhancement +2.5%."
+  },
+  "11093": {
+    "text": "On hit, target's Crit Damage -3.6% for 8s. Ally Atk. Power Enhancement +2.0%."
+  },
+  "11071": {
+    "text": "On hit, target's Crit Resistance -2.5% for 8s. Ally Atk. Power Enhancement +3.0%."
+  },
+  "11072": {
+    "text": "On hit, target's Crit Resistance -2.1% for 8s. Ally Atk. Power Enhancement +2.5%."
+  },
+  "11073": {
+    "text": "On hit, target's Crit Resistance -1.8% for 8s. Ally Atk. Power Enhancement +2.0%."
+  },
+  "11081": {
+    "text": "Targets that have a protective effect are granted Outgoing Damage +1.3% for 5s. Ally Atk. Power Enhancement +3.0%."
+  },
+  "11082": {
+    "text": "Targets that have a protective effect are granted Outgoing Damage +1.1% for 5s. Ally Atk. Power Enhancement +2.5%."
+  },
+  "11083": {
+    "text": "Targets that have a protective effect are granted Outgoing Damage +0.9% for 5s. Ally Atk. Power Enhancement +2.0%."
+  },
+  "605100171": {
+    "text": "On hit, target's Defense -2.5% for 8s. Ally Atk. Power Enhancement +3.0%."
+  },
+  "605100172": {
+    "text": "On hit, target's Defense -2.1% for 8s. Ally Atk. Power Enhancement +2.5%."
+  },
+  "605100173": {
+    "text": "On hit, target's Defense -1.8% for 8s. Ally Atk. Power Enhancement +2.0%."
+  },
+  "11111": {
+    "text": "Weapon Power +9000. When your HP is above 50%, on successful hit Weapon Power +2400 for 5s."
+  },
+  "11112": {
+    "text": "Weapon Power +8100. When your HP is above 50%, on successful hit Weapon Power +2200 for 5s."
+  },
+  "11113": {
+    "text": "Weapon Power +7200. When your HP is above 50%, on successful hit Weapon Power +2000 for 5s."
+  },
+  "11121": {
+    "text": "Weapon Power +8700. On successful hit, Weapon Power +150 every 30s (max 30 stacks, 120s duration) (average for 10 min)"
+  },
+  "11122": {
+    "text": "Weapon Power +7800. On successful hit, Weapon Power +140 every 30s (max 30 stacks, 120s duration) (average for 10 min)"
+  },
+  "11123": {
+    "text": "Weapon Power +6900. On successful hit, Weapon Power +130 every 30s (max 30 stacks, 120s duration) (average for 10 min)"
+  },
+  "605100101": {
+    "text": "On successful hit, Weapon Power +1480 and Attack and Movement Speed +1% every 1s (max 6 stack, 10s duration)"
+  },
+  "605100102": {
+    "text": "On successful hit, Weapon Power +1320 and Attack and Movement Speed +1% every 1s (max 6 stack, 10s duration)"
+  },
+  "605100103": {
+    "text": "On successful hit, Weapon Power +1160 and Attack and Movement Speed +1% every 1s (max 6 stack, 10s duration)"
+  },
+  "46": {
+    "text": "Brand Power {value}%",
+    "scale": 0.01,
+    "decimals": 2
+  },
+  "152": {
+    "text": "Weapon Power {value}%",
+    "scale": 0.01,
+    "decimals": 2
+  },
+  "6000": {
+    "text": "Meter Gain Increase 1.60%"
+  },
+  "6001": {
+    "text": "Meter Gain Increase 3.60%"
+  },
+  "6002": {
+    "text": "Meter Gain Increase 6.00%"
+  }
+}

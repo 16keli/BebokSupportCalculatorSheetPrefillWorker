@@ -1,0 +1,495 @@
+// app/components/PrefillCard.tsx
+import { useState, useEffect, useMemo } from "react";
+import { streamRequest, ApiError } from "../api";
+import type { AdvancedInput, PartyMemberInfo, PrefillCardState, SupportPreview } from "../types";
+
+interface PrefillCardProps {
+  card: PrefillCardState;
+  onDone: (spreadsheetUrl: string) => void;
+}
+
+// Item level to 2 decimal places, trimming trailing zeros (e.g. 1732 -> "1732",
+// 1732.5 -> "1732.5", 1732.56 -> "1732.56").
+function formatIlvl(n: number): string {
+  return Number.isInteger(n) ? String(n) : n.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
+}
+
+// One party member's class icon (public/classes/<classId>.png) + name + item
+// level + combat power (public/icons/{dps,support}_combat_power.png, picked
+// via isSupport - see SUPPORT_SPECS in src/scraper.ts), used in both the
+// multi-party picker and the single-party summary.
+function PartyMembers({ players }: { players: PartyMemberInfo[] }) {
+  return (
+    <div className="party-members">
+      {players.map((p) => (
+        <div className="party-member" key={p.name}>
+          <img src={`/classes/${p.classId}.png`} alt={p.className} className="class-icon" />
+          <span className="member-name">{p.name}</span>
+          <span className="member-stat">{formatIlvl(p.itemLevel)} ilvl</span>
+          <span className="member-stat">
+            <img
+              src={`/icons/${p.isSupport ? "support" : "dps"}_combat_power.png`}
+              alt={p.isSupport ? "Support combat power" : "DPS combat power"}
+              className="stat-icon"
+            />
+            {p.combatPower.toFixed(2)}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function seedInputs(defs: AdvancedInput[]): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const d of defs) out[d.id] = d.default != null ? String(d.default) : "";
+  return out;
+}
+
+// Sentinel value for the uptime dropdown's whole-party option.
+const AGGREGATE = "aggregate";
+
+// The default reference DPS: the highest-combat-power non-support member (falls
+// back to the highest-CP member overall if a party is somehow all support).
+function highestCpDpsName(players: PartyMemberInfo[]): string {
+  const dps = players.filter((p) => !p.isSupport);
+  const pool = dps.length ? dps : players;
+  if (pool.length === 0) return "";
+  return pool.reduce((a, b) => (b.combatPower > a.combatPower ? b : a)).name;
+}
+
+const PET_LABEL: Record<string, string> = {
+  spec: "Specialization",
+  swiftness: "Swiftness",
+  other: "Other",
+};
+
+// Live preview mirroring the snapshot combatStats logic. The authoritative
+// values are still computed server-side from the snapshot in phase 2; this only
+// shows the user what to expect.
+function previewStats(support: SupportPreview | undefined, inputs: Record<string, string>) {
+  const specPts = support?.specPoints ?? 0;
+  const swiftPts = support?.swiftPoints ?? 0;
+  const rosterSpec = Number(inputs.rosterSpec) || 0;
+  const rosterSwift = Number(inputs.rosterSwift) || 0;
+  let pet = inputs.pet;
+  if (!pet) pet = specPts === 30 ? "spec" : "swiftness";
+  return {
+    pet,
+    spec: specPts * 50 + rosterSpec + (pet === "spec" ? 160 : 0),
+    swift: swiftPts * 50 + rosterSwift + (pet === "swiftness" ? 160 : 0),
+  };
+}
+
+// Table layout for the "Specialization / Swiftness" input section: rows Pet /
+// Roster Bonus, columns Specialization / Swiftness / Other. Replaces the
+// generic renderField mapping for these three fields specifically (pet is now
+// a 3-way exclusive picker instead of a dropdown; roster bonus never applies
+// to Other, so that cell is intentionally left empty).
+function SpecSwiftTable({
+  pet,
+  rosterSpec,
+  rosterSwift,
+  inputs,
+  onChange,
+  onPetChange,
+  locked,
+  idPrefix,
+}: {
+  pet: AdvancedInput;
+  rosterSpec: AdvancedInput;
+  rosterSwift: AdvancedInput;
+  inputs: Record<string, string>;
+  onChange: (id: string, value: string) => void;
+  onPetChange: (value: string) => void;
+  locked: boolean;
+  idPrefix: string;
+}) {
+  const petValue = inputs.pet ?? "";
+  return (
+    <div className="spec-swift-wrap">
+      <div className="spec-swift-table">
+        <div className="spec-swift-cell spec-swift-header" />
+        <div className="spec-swift-cell spec-swift-header">
+          <img src="/icons/spec.png" alt="" className="spec-swift-icon" />
+          Specialization
+        </div>
+        <div className="spec-swift-cell spec-swift-header">
+          <img src="/icons/swift.png" alt="" className="spec-swift-icon" />
+          Swiftness
+        </div>
+        <div className="spec-swift-cell spec-swift-header">Other</div>
+
+        <div className="spec-swift-cell spec-swift-row-label">{pet.label ?? "Pet"}</div>
+        {(["spec", "swiftness", "other"] as const).map((value) => (
+          <button
+            key={value}
+            type="button"
+            aria-pressed={petValue === value}
+            disabled={locked}
+            className={`spec-swift-cell spec-swift-option${petValue === value ? " selected" : ""}`}
+            onClick={() => onPetChange(value)}
+          >
+            {PET_LABEL[value]}
+          </button>
+        ))}
+
+        <div className="spec-swift-cell spec-swift-row-label">Roster Bonus</div>
+        <div className="spec-swift-cell">
+          <input
+            id={`${idPrefix}-rosterSpec`}
+            type="number"
+            // value={inputs.rosterSpec ?? ""}
+            placeholder={rosterSpec.default != null ? String(rosterSpec.default) : ""}
+            disabled={locked}
+            onChange={(e) => onChange("rosterSpec", e.target.value)}
+          />
+        </div>
+        <div className="spec-swift-cell">
+          <input
+            id={`${idPrefix}-rosterSwift`}
+            type="number"
+            // value={inputs.rosterSwift ?? ""}
+            placeholder={rosterSwift.default != null ? String(rosterSwift.default) : ""}
+            disabled={locked}
+            onChange={(e) => onChange("rosterSwift", e.target.value)}
+          />
+        </div>
+        <div className="spec-swift-cell spec-swift-cell-empty" />
+      </div>
+      {pet.help && <small className="advanced-help">{pet.help}</small>}
+    </div>
+  );
+}
+
+interface PartyFormState {
+  inputs: Record<string, string>;
+  petTouched: boolean;
+  // Selected reference-DPS member names; undefined = use the party's default
+  // (highest-CP DPS). uptimeMember may also be the AGGREGATE sentinel.
+  gearMember?: string;
+  uptimeMember?: string;
+  done: boolean;
+  status: { text: string; tag: "info" | "ok" | "err" } | null;
+}
+
+export function PrefillCard({ card, onDone }: PrefillCardProps) {
+  const inputsDefs = card.inputsDefs ?? [];
+  const hasInputs = inputsDefs.length > 0;
+  const showPicker = !card.autoSelect && card.parties.length > 1;
+
+  // For <=1 party the worker keys everything under "all" (see fetchLogPhase /
+  // buildSupportInfo); multi-party is keyed by party number.
+  const [selectedKey, setSelectedKey] = useState<string | null>(showPicker ? null : "all");
+  // Each party (support) gets its own inputs/pet-touched/done/status bucket -
+  // switching parties must neither leak one party's edits into another nor
+  // leave a completed party's "Done" state stuck on a different, unsubmitted
+  // party. `submitting` stays a single shared lock (only one
+  // /api/log-prefill-party request in flight across the whole card at a time).
+  const [partyState, setPartyState] = useState<Record<string, PartyFormState>>({});
+  const [submitting, setSubmitting] = useState(false);
+
+  function defaultPartyState(): PartyFormState {
+    return { inputs: seedInputs(inputsDefs), petTouched: false, done: false, status: null };
+  }
+
+  function getParty(key: string | null): PartyFormState {
+    return (key ? partyState[key] : undefined) ?? defaultPartyState();
+  }
+
+  function updateParty(
+    key: string,
+    patch: Partial<PartyFormState> | ((s: PartyFormState) => Partial<PartyFormState>)
+  ) {
+    setPartyState((prev) => {
+      const base = prev[key] ?? defaultPartyState();
+      const patchObj = typeof patch === "function" ? patch(base) : patch;
+      return { ...prev, [key]: { ...base, ...patchObj } };
+    });
+  }
+
+  // Members of a given party key (for <=1 party everything is keyed "all").
+  function playersForKey(key: string): PartyMemberInfo[] {
+    if (card.parties.length === 0) return [];
+    if (key === "all" || card.parties.length <= 1) return card.parties[0]?.players ?? [];
+    return card.parties.find((p) => String(p.partyNumber) === key)?.players ?? [];
+  }
+
+  async function submit(partyKey: string) {
+    setSubmitting(true);
+    updateParty(partyKey, { status: { text: "Fetching snapshot and writing sheet...", tag: "info" } });
+    const st = partyState[partyKey] ?? defaultPartyState();
+    const { inputs } = st;
+    const dflt = highestCpDpsName(playersForKey(partyKey));
+    const gearMember = (st.gearMember ?? dflt) || undefined;
+    const uptimeMember = (st.uptimeMember ?? dflt) || undefined;
+    try {
+      await streamRequest(
+        "/api/log-prefill-party",
+        { jobId: card.jobId, partyKey, inputs, gearMember, uptimeMember },
+        (evt) => {
+          if (evt.type === "status") {
+            updateParty(partyKey, { status: { text: evt.message, tag: "info" } });
+          } else if (evt.type === "prefill-done") {
+            updateParty(partyKey, { status: { text: evt.message, tag: "ok" }, done: true });
+            onDone(evt.spreadsheetUrl);
+          } else if (evt.type === "error") {
+            updateParty(partyKey, { status: { text: evt.message, tag: "err" } });
+          }
+        }
+      );
+    } catch (err) {
+      updateParty(partyKey, {
+        status: { text: err instanceof ApiError ? err.message : "Connection error", tag: "err" },
+      });
+      setSubmitting(false);
+      return;
+    }
+    setSubmitting(false);
+  }
+
+  // With no advanced inputs to collect, preserve the original behavior: a single
+  // party auto-submits on mount with no extra interaction.
+  useEffect(() => {
+    if (!card.autoSelect || hasInputs) return;
+    submit("all");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const support = selectedKey ? card.supportInfo?.[selectedKey] : undefined;
+  const current = getParty(selectedKey);
+  const preview = useMemo(
+    () => (selectedKey ? previewStats(support, current.inputs) : null),
+    [selectedKey, support, current.inputs]
+  );
+
+  // Auto-seed this party's Pet cell from its support's spec points (spec if
+  // maxed at 30, else swiftness) - the same rule the old "auto" dropdown
+  // option used - until the user manually picks a cell for this party.
+  useEffect(() => {
+    if (!selectedKey || current.petTouched || !support) return;
+    const auto = support.specPoints === 30 ? "spec" : "swiftness";
+    if (current.inputs.pet === auto) return;
+    updateParty(selectedKey, (s) => ({ inputs: { ...s.inputs, pet: auto } }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedKey, support, current.petTouched, current.inputs.pet]);
+
+  // Group inputs by their (optional) section heading, preserving order.
+  const sections = useMemo(() => {
+    const order: string[] = [];
+    const bySection = new Map<string, AdvancedInput[]>();
+    for (const inp of inputsDefs) {
+      const key = inp.section ?? "";
+      if (!bySection.has(key)) {
+        bySection.set(key, []);
+        order.push(key);
+      }
+      bySection.get(key)!.push(inp);
+    }
+    return order.map((s) => [s, bySection.get(s)!] as const);
+  }, [inputsDefs]);
+
+  const locked = submitting || current.done;
+  const showInputs = hasInputs && selectedKey !== null;
+
+  const setField = (id: string, v: string) => {
+    if (!selectedKey) return;
+    updateParty(selectedKey, (s) => ({ inputs: { ...s.inputs, [id]: v } }));
+  };
+
+  // Reference-DPS selectors: the party's members, defaulting to the highest-CP
+  // DPS. Gear picks whose snapshot fills the DPS gear cells; uptime picks whose
+  // per-member uptime fills the uptime cells (or AGGREGATE for the whole party).
+  const partyPlayers = selectedKey ? playersForKey(selectedKey) : [];
+  const defaultDps = highestCpDpsName(partyPlayers);
+  const gearValue = current.gearMember ?? defaultDps;
+  const uptimeValue = current.uptimeMember ?? defaultDps;
+  const showSelectors = selectedKey !== null && partyPlayers.length > 0;
+  const setGearMember = (v: string) =>
+    selectedKey && updateParty(selectedKey, { gearMember: v });
+  const setUptimeMember = (v: string) =>
+    selectedKey && updateParty(selectedKey, { uptimeMember: v });
+
+  function renderField(inp: AdvancedInput) {
+    const fieldId = `inp-${card.jobId}-${inp.id}`;
+    const onChange = (v: string) => setField(inp.id, v);
+    return (
+      <div className="advanced-field" key={inp.id}>
+        <label htmlFor={fieldId}>{inp.label}</label>
+        {inp.type === "select" ? (
+          <select id={fieldId} value={current.inputs[inp.id] ?? ""} disabled={locked} onChange={(e) => onChange(e.target.value)}>
+            {inp.options?.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        ) : inp.type === "range" ? (
+          <div className="range-row">
+            <input
+              id={fieldId}
+              type="range"
+              min={inp.min}
+              max={inp.max}
+              step={inp.step}
+              value={current.inputs[inp.id] ?? ""}
+              disabled={locked}
+              onChange={(e) => onChange(e.target.value)}
+            />
+            <span className="range-value">
+              {current.inputs[inp.id]}
+              {inp.unit ?? ""}
+            </span>
+          </div>
+        ) : (
+          <input
+            id={fieldId}
+            type={inp.type === "number" ? "number" : "text"}
+            value={current.inputs[inp.id] ?? ""}
+            placeholder={inp.default != null ? String(inp.default) : ""}
+            disabled={locked}
+            onChange={(e) => onChange(e.target.value)}
+          />
+        )}
+        {inp.help && <small className="advanced-help">{inp.help}</small>}
+      </div>
+    );
+  }
+
+  return (
+    <div className="pick-card">
+      <div className="pick-card-title">{card.logUrl}</div>
+
+      {showPicker ? (
+        <>
+          <div className="pick-card-summary">
+            Choose which party the support was in (used for uptime calculations):
+          </div>
+          <div className="option-btn-grid">
+            {card.parties.map((party) => {
+              const key = String(party.partyNumber);
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  className={`option-btn${selectedKey === key ? " selected" : ""}`}
+                  disabled={locked}
+                  onClick={() => {
+                    setSelectedKey(key);
+                    if (!hasInputs) submit(key);
+                  }}
+                >
+                  <div>Party {party.partyNumber + 1}</div>
+                  <PartyMembers players={party.players} />
+                </button>
+              );
+            })}
+          </div>
+        </>
+      ) : (
+        card.parties.length > 0 && (
+          <div className="pick-card-summary">
+            <div>Party {card.parties[0]!.partyNumber + 1}</div>
+            <PartyMembers players={card.parties[0]!.players} />
+          </div>
+        )
+      )}
+
+      {showSelectors && (
+        <div className="dps-selectors">
+          <div className="advanced-field">
+            <label htmlFor={`gear-${card.jobId}`}>DPS Player's Gear</label>
+            <select
+              id={`gear-${card.jobId}`}
+              value={gearValue}
+              disabled={locked}
+              onChange={(e) => setGearMember(e.target.value)}
+            >
+              {partyPlayers.map((p) => (
+                <option key={p.name} value={p.name}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="advanced-field">
+            <label htmlFor={`uptime-${card.jobId}`}>DPS Player's Uptime</label>
+            <select
+              id={`uptime-${card.jobId}`}
+              value={uptimeValue}
+              disabled={locked}
+              onChange={(e) => setUptimeMember(e.target.value)}
+            >
+              {/* Supports are excluded: uptime measures the support's buff
+                  coverage over DPS damage, which is undefined for the support
+                  itself (dpsPlayers filters supports out -> blank cells). Gear
+                  still lists everyone. */}
+              {partyPlayers
+                .filter((p) => !p.isSupport)
+                .map((p) => (
+                  <option key={p.name} value={p.name}>
+                    {p.name}
+                  </option>
+                ))}
+              <option value={AGGREGATE}>Aggregate (whole party)</option>
+            </select>
+          </div>
+        </div>
+      )}
+
+      {showInputs && (
+        <div className="advanced-inline">
+          {support?.name && preview && (
+            <div className="support-preview">
+              Support <strong>{support.name}</strong> - spec {support.specPoints} / swift{" "}
+              {support.swiftPoints} pts · pet -&gt;{" "}
+              <strong>{PET_LABEL[preview.pet] ?? preview.pet}</strong>
+              <span className="support-preview-totals">
+                {" "}
+                -&gt; <strong>{preview.spec}</strong> spec / <strong>{preview.swift}</strong> swift (before bracelet)
+              </span>
+            </div>
+          )}
+          <details className="advanced-collapse">
+            <summary>Advanced inputs</summary>
+            {sections.map(([section, defs]) => (
+              <div className="advanced-section" key={section || "default"}>
+                {section && <div className="advanced-section-head">{section}</div>}
+                {section === "Specialization / Swiftness" ? (
+                  <SpecSwiftTable
+                    pet={defs.find((d) => d.id === "pet")!}
+                    rosterSpec={defs.find((d) => d.id === "rosterSpec")!}
+                    rosterSwift={defs.find((d) => d.id === "rosterSwift")!}
+                    inputs={current.inputs}
+                    onChange={setField}
+                    onPetChange={(v) => {
+                      if (!selectedKey) return;
+                      updateParty(selectedKey, (s) => ({
+                        inputs: { ...s.inputs, pet: v },
+                        petTouched: true,
+                      }));
+                    }}
+                    locked={locked}
+                    idPrefix={`inp-${card.jobId}`}
+                  />
+                ) : (
+                  defs.map(renderField)
+                )}
+              </div>
+            ))}
+          </details>
+          <button
+            type="button"
+            className="run-btn"
+            disabled={locked || !selectedKey}
+            onClick={() => selectedKey && submit(selectedKey)}
+          >
+            {current.done ? "Done" : submitting ? "Running..." : "Go..."}
+          </button>
+        </div>
+      )}
+
+      {current.status && <div className={`pick-status ${current.status.tag}`}>{current.status.text}</div>}
+    </div>
+  );
+}

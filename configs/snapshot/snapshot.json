@@ -1,0 +1,552 @@
+{
+  "key": "bebok-3.8.1",
+  "source": "snapshot",
+  "version": { "supported": "v3" },
+  "comment": "Bible snapshot v3. Version has no payload field - it's the loadoutHash prefix ('v3/<hash>'), supplied by the runtime. root = the character snapshot object. Fields are referenced from sheet.json by id. Intermediates factor out repeated item/core lookups.",
+  "rootPath": "data[1].snapshot",
+  "rootPathFallbacks": [
+    "data[0].snapshot",
+    "data[1].data.snapshot",
+    "data[0].data.snapshot"
+  ],
+  "refData": ["astrogems", "cores", "ark_passive", "gems", "skills", "armor", "gem_skill_groups"],
+  "intermediates": [
+    {
+      "id": "itemBySlot",
+      "exprFile": "expr/itemBySlot.ts",
+      "comment": "Map of equip slot -> item (weapon, head, neck, ear1, finger1, ability_stone, bracelet, ...)"
+    },
+    {
+      "id": "gearTier",
+      "exprFile": "expr/gearTier.ts",
+      "comment": "Map of equip slot (head/shoulder/upper_body/lower_body/hand/weapon) -> raid gear tier name ('Aegir'/'Serca'/''), resolved from the equipped item's id (itemBySlot) via data/armor.json's balanceLevel (1590/1675). Consumed by the *GearTier fields (E6-E11's Gear Tier section)."
+    },
+    {
+      "id": "arkGrid",
+      "exprFile": "expr/arkGrid.ts",
+      "comment": "Ark grid processing. Per core (keyed by base): walks gems in order, marks each 'active' only if its cost (astrogems.json baseCost minus the gem's costReduc) fits the core's remaining capacity (cores.json gemSlotPoint), short-circuiting on the first that doesn't fit. Accumulates corePoints (-> activated threshold from 0/10/14/17/18/19/20) and side-node opts.level into a global `side` map (2011 ally dmg, 2012 brand, 2013 ally atk). Cores absent from cores.json (e.g. chaos cores in a partial data file) are marked found:false and yield blank points."
+    },
+    {
+      "id": "arkPassive",
+      "exprFile": "expr/arkPassive.ts",
+      "comment": "Ark passive nodes resolved against ark_passive.json. Exposes evolution levels by id (evo[id]) and enlightenment main/side node levels per tier (enlMain[tier], enlSide[tier]). Enlightenment tier/type come from the ref file; evolution cells are mapped by explicit id in the fields below."
+    },
+    {
+      "id": "combatStats",
+      "exprFile": "expr/combatStats.ts",
+      "comment": "Spec (F14) / Swiftness (F15) totals = snapshot evolution points (x50) + advanced-input roster/pet bonuses. The log previews the resolved pet/points in phase 1 (specPoints/swiftPoints); this is the authoritative value written in phase 2 with the confirmed inputs."
+    },
+    {
+      "id": "stoneEngravings",
+      "exprFile": "expr/stoneEngravings.ts",
+      "comment": "Per-engraving activation level on the ability stone. An engraving activates one level at each of [6,7,9,10] nodes, so level = count of thresholds met (0-4): <6->0, 6->1, 7/8->2, 9->3, 10->4. Consumed by awakeningRock (BC24) and stoneBonus (F19). [] when no stone."
+    },
+    {
+      "id": "skillGems",
+      "exprFile": "expr/skillGems.ts",
+      "comment": "Map of skill id -> { dmg, cdr } gem LEVELS. Walks the player's equipped gems (root.gems): a gem effect of type 5 is a skill-damage gem, type 27 a skill-cooldown gem, both keyed by the skill id the effect targets; the level comes from ref.gems[gem.id].level. Consumed by the ap1/ap2/brand gem fields (BB/BC 3-5)."
+    },
+    {
+      "id": "classSkills",
+      "exprFile": "expr/classSkills.ts",
+      "comment": "The player class's ap1 / ap2 / brand skill (from skills.json by classId+type), each {id, cooldown (base ms), effectiveCooldown (ms after taken cooldown tripods), ...} or null. The snapshot's root.classId is the lowercase class NAME ('bard'), while skills.json keys on the numeric classId, so NAME2ID maps the 4 support classes (paladin 105 / valkyrie 113 / bard 204 / artist 602); a numeric classId passes through unchanged. Every support class has exactly one ap1 and one ap2; a class may DESIGNATE several 'brand' skills. `brands` lists every brand skill DETECTED in the build (level > 0 in root.skills, most-leveled first) and `brand` is the primary - the first of `brands` (highest level, ties -> skills.json order: deterministic but arbitrary when multiple are run). With no brand slotted, brands is empty and brand falls back to the class's highest-defined brand. effectiveCooldown applies each skills.json cdrTripod (reduce_default_cooldown reference: {tier, option, cd-delta-ms}) whose option matches the player's chosen tripod for that tier (root.skills[*].tripods is [tier1,tier2,tier3] option indices); cd is signed (negative reduces, positive trade-off tripods increase). Consumed by the ap1/ap2/brand cooldown + gem fields (rows 3-5)."
+    },
+    {
+      "id": "otherSkills",
+      "exprFile": "expr/otherSkills.ts",
+      "comment": "The player's other GEMMED skills (BB6:BD10), driven by the equipped gems (root.gems via skillGems), NOT the skill loadout: every skill carrying a damage (effect type 5) or cooldown (type 27) gem, in gem-equip order, minus the 3 already placed as ap1/ap2/brand (by id - only the primary brand is excluded, so a second brand skill flows through here). Each resolved to {id, cooldown (effectiveCooldown ms, same cdrTripod logic as classSkills; base cooldown when the skill isn't in the loadout so tripods are unknown), dmg, cdr gem levels from skillGems}. The skillN fields below read indices 0-4; fewer than 5 -> trailing rows blank, more than 5 -> extras ignored. Paladin special case: paladins can slot a cooldown gem on their IDENTITY (gem effect type 35 targeting skill group 15001, the Piety skills; see raw_data/GemSkillGroup.json). The sheet has no identity-cooldown slot, so its level is simply parked in the first available (empty) damage-gem slot among these rows so it still counts toward the gem-level total."
+    }
+  ],
+  "fields": [
+    {
+      "id": "class",
+      "expr": "root.classId",
+      "comment": "Class string e.g. 'bard'"
+    },
+    {
+      "id": "headGearTier",
+      "expr": "$.gearTier.head ?? ''",
+      "comment": "Gear Tier E6: raid tier of the equipped headpiece ('Aegir'/'Serca'/''). See gearTier intermediate."
+    },
+    {
+      "id": "shoulderGearTier",
+      "expr": "$.gearTier.shoulder ?? ''",
+      "comment": "Gear Tier E7: raid tier of the equipped shoulderpiece."
+    },
+    {
+      "id": "chestGearTier",
+      "expr": "$.gearTier.upper_body ?? ''",
+      "comment": "Gear Tier E8: raid tier of the equipped chestpiece."
+    },
+    {
+      "id": "pantsGearTier",
+      "expr": "$.gearTier.lower_body ?? ''",
+      "comment": "Gear Tier E9: raid tier of the equipped pants."
+    },
+    {
+      "id": "gloveGearTier",
+      "expr": "$.gearTier.hand ?? ''",
+      "comment": "Gear Tier E10: raid tier of the equipped gloves."
+    },
+    {
+      "id": "weaponGearTier",
+      "expr": "$.gearTier.weapon ?? ''",
+      "comment": "Gear Tier E11: raid tier of the equipped weapon."
+    },
+    {
+      "id": "weaponHoning",
+      "expr": "$.itemBySlot.weapon?.data?.honing ?? ''"
+    },
+    {
+      "id": "weaponAdvHoning",
+      "expr": "$.itemBySlot.weapon?.data?.advancedHoning ?? ''"
+    },
+    {
+      "id": "headHoning",
+      "expr": "$.itemBySlot.head?.data?.honing ?? ''"
+    },
+    {
+      "id": "headAdvHoning",
+      "expr": "$.itemBySlot.head?.data?.advancedHoning ?? ''"
+    },
+    {
+      "id": "chestHoning",
+      "expr": "$.itemBySlot.upper_body?.data?.honing ?? ''"
+    },
+    {
+      "id": "chestAdvHoning",
+      "expr": "$.itemBySlot.upper_body?.data?.advancedHoning ?? ''"
+    },
+    {
+      "id": "pantsHoning",
+      "expr": "$.itemBySlot.lower_body?.data?.honing ?? ''"
+    },
+    {
+      "id": "pantsAdvHoning",
+      "expr": "$.itemBySlot.lower_body?.data?.advancedHoning ?? ''"
+    },
+    {
+      "id": "gloveHoning",
+      "expr": "$.itemBySlot.hand?.data?.honing ?? ''"
+    },
+    {
+      "id": "gloveAdvHoning",
+      "expr": "$.itemBySlot.hand?.data?.advancedHoning ?? ''"
+    },
+    {
+      "id": "shoulderHoning",
+      "expr": "$.itemBySlot.shoulder?.data?.honing ?? ''"
+    },
+    {
+      "id": "shoulderAdvHoning",
+      "expr": "$.itemBySlot.shoulder?.data?.advancedHoning ?? ''"
+    },
+    {
+      "id": "specStat",
+      "expr": "$.combatStats.spec",
+      "comment": "Specialization total (F14). See combatStats intermediate."
+    },
+    {
+      "id": "swiftStat",
+      "expr": "$.combatStats.swift",
+      "comment": "Swiftness total (F15). See combatStats intermediate."
+    },
+    {
+      "id": "skinBonus",
+      "expr": "Number(input.skinBonus) / 100",
+      "comment": "Main-stat % from avatar skins (F18). Advanced-input percentage (0-8) -> fraction; cell is percent-formatted. Replaces the old loadout-based detection (now skinBonusFromLoadout)."
+    },
+    {
+      "id": "strongholdBonus",
+      "expr": "Number(input.stronghold) / 100",
+      "comment": "Main-stat % from stronghold farm bonus (BJ3). Advanced-input percentage -> fraction; cell is percent-formatted."
+    },
+    {
+      "id": "stoneBonus",
+      "exprFile": "expr/stoneBonus.ts",
+      "comment": "F19: sum of activated engraving levels on the ability stone (see stoneEngravings; penalty engravings 800-803 excluded). Canonical number; the sheet transform maps >=5 -> '9/7 and better', else 'worse than 9/7'. '' when no stone."
+    },
+    {
+      "id": "karmaEvolution",
+      "expr": "root.karma.evolution",
+      "comment": "F21: raw karma evolution level. The sheet transform converts it to a rank via the breakpoint table [0,1,5,9,13,17,21]."
+    },
+    {
+      "id": "karmaEnlightenment",
+      "expr": "root.karma.enlightenment"
+    },
+    {
+      "id": "astroAllyDamage",
+      "expr": "$.arkGrid.side[2011] ?? 0",
+      "comment": "Total ally-damage (opt 2011) side-node levels across all ACTIVE astrogems"
+    },
+    {
+      "id": "astroBrand",
+      "expr": "$.arkGrid.side[2012] ?? 0",
+      "comment": "Total brand-power (opt 2012) side-node levels across all ACTIVE astrogems"
+    },
+    {
+      "id": "astroAllyAtk",
+      "expr": "$.arkGrid.side[2013] ?? 0",
+      "comment": "Total ally-attack (opt 2013) side-node levels across all ACTIVE astrogems"
+    },
+    {
+      "id": "orderSunCore",
+      "expr": "$.arkGrid.byBase[10001]?.id ?? ''",
+      "comment": "Raw core id in the Order Sun slot (base 10001)"
+    },
+    {
+      "id": "orderMoonCore",
+      "expr": "$.arkGrid.byBase[10002]?.id ?? ''"
+    },
+    {
+      "id": "chaosSunCore",
+      "expr": "$.arkGrid.byBase[10004]?.id ?? ''"
+    },
+    {
+      "id": "chaosMoonCore",
+      "expr": "$.arkGrid.byBase[10005]?.id ?? ''"
+    },
+    {
+      "id": "chaosStarCore",
+      "expr": "$.arkGrid.byBase[10006]?.id ?? ''"
+    },
+    {
+      "id": "orderSunPoints",
+      "expr": "$.arkGrid.byBase[10001]?.threshold ?? ''",
+      "comment": "Activated core threshold (0/10/14/17/18/19/20) for the Order Sun core"
+    },
+    {
+      "id": "orderMoonPoints",
+      "expr": "$.arkGrid.byBase[10002]?.threshold ?? ''"
+    },
+    {
+      "id": "chaosSunPoints",
+      "expr": "$.arkGrid.byBase[10004]?.threshold ?? ''"
+    },
+    {
+      "id": "chaosMoonPoints",
+      "expr": "$.arkGrid.byBase[10005]?.threshold ?? ''"
+    },
+    {
+      "id": "chaosStarPoints",
+      "expr": "$.arkGrid.byBase[10006]?.threshold ?? ''"
+    },
+    {
+      "id": "enlightMainT1",
+      "expr": "$.arkPassive.enlMain[1] ?? ''",
+      "comment": "Enlightenment tier 1 main node level (AM6)"
+    },
+    {
+      "id": "enlightMainT2",
+      "expr": "$.arkPassive.enlMain[2] ?? ''",
+      "comment": "Enlightenment tier 2 main node level (AM7)"
+    },
+    {
+      "id": "enlightMainT3",
+      "expr": "$.arkPassive.enlMain[3] ?? ''",
+      "comment": "Enlightenment tier 3 main node level (AM8)"
+    },
+    {
+      "id": "enlightMainT4",
+      "expr": "$.arkPassive.enlMain[4] ?? ''",
+      "comment": "Enlightenment tier 4 main node level (AM9)"
+    },
+    {
+      "id": "enlightSideT3",
+      "expr": "$.arkPassive.enlSide[3] ?? ''",
+      "comment": "Enlightenment tier 3 side node level (AM12)"
+    },
+    {
+      "id": "enlightSideT4",
+      "expr": "$.arkPassive.enlSide[4] ?? ''",
+      "comment": "Enlightenment tier 4 side node level (AM13)"
+    },
+    {
+      "id": "evoLuminary",
+      "expr": "$.arkPassive.evo[1032400] ?? ''",
+      "comment": "Evolution node Luminary 1032400 (AM17)"
+    },
+    {
+      "id": "evoAdvance",
+      "expr": "$.arkPassive.evo[1032500] ?? ''",
+      "comment": "Evolution node Advance 1032500 (AM18)"
+    },
+    {
+      "id": "evoPrayer",
+      "expr": "$.arkPassive.evo[1032600] ?? ''",
+      "comment": "Evolution node Prayer 1032600 (AM19)"
+    },
+    {
+      "id": "evoBoundlessMp",
+      "expr": "$.arkPassive.evo[1020100] ?? ''",
+      "comment": "Evolution node Boundless MP 1020100 (AM23)"
+    },
+    {
+      "id": "evoGoddessBlessings",
+      "expr": "$.arkPassive.evo[1020600] ?? ''",
+      "comment": "Evolution node Goddess of Blessings 1020600 (AM24)"
+    },
+    {
+      "id": "evoUnlimitedMagick",
+      "expr": "$.arkPassive.evo[1030100] ?? ''",
+      "comment": "Evolution node Unlimited Magick 1030100 (AM29)"
+    },
+    {
+      "id": "evoPassionateDance",
+      "expr": "$.arkPassive.evo[1030600] ?? ''",
+      "comment": "Evolution node Passionate Dance 1030600 (AM30)"
+    },
+    {
+      "id": "neckStats",
+      "expr": "$.itemBySlot.neck?.data?.stats ?? []",
+      "comment": "Raw necklace stat-line objects. Canonical - the sheet (AU3-5 via expr/statLineText.ts) drops the fixed base stats (base:true), keeps the rolled lines in order, and renders each via data/stat_lines.json."
+    },
+    {
+      "id": "necklaceMain",
+      "expr": "($.itemBySlot.neck?.data?.stats||[]).find(s=>s.base&&s.index===4)?.value ?? ''",
+      "comment": "Necklace main stat value (index 4, equal across the 3/4/5 main-stat slots) -> AU6"
+    },
+    {
+      "id": "ear1Stats",
+      "expr": "$.itemBySlot.ear1?.data?.stats ?? []",
+      "comment": "Raw earring-1 stat lines (AU9-11, ordered, base stats dropped). See neckStats."
+    },
+    {
+      "id": "ear1Main",
+      "expr": "($.itemBySlot.ear1?.data?.stats||[]).find(s=>s.base&&s.index===4)?.value ?? ''"
+    },
+    {
+      "id": "ear2Stats",
+      "expr": "$.itemBySlot.ear2?.data?.stats ?? []",
+      "comment": "Raw earring-2 stat lines (AW9-11)."
+    },
+    {
+      "id": "ear2Main",
+      "expr": "($.itemBySlot.ear2?.data?.stats||[]).find(s=>s.base&&s.index===4)?.value ?? ''"
+    },
+    {
+      "id": "ring1Stats",
+      "expr": "$.itemBySlot.finger1?.data?.stats ?? []",
+      "comment": "Raw ring-1 stat lines (AU15-17)."
+    },
+    {
+      "id": "ring1Main",
+      "expr": "($.itemBySlot.finger1?.data?.stats||[]).find(s=>s.base&&s.index===4)?.value ?? ''"
+    },
+    {
+      "id": "ring2Stats",
+      "expr": "$.itemBySlot.finger2?.data?.stats ?? []",
+      "comment": "Raw ring-2 stat lines (AW15-17)."
+    },
+    {
+      "id": "ring2Main",
+      "expr": "($.itemBySlot.finger2?.data?.stats||[]).find(s=>s.base&&s.index===4)?.value ?? ''"
+    },
+    {
+      "id": "braceletSpec",
+      "expr": "($.itemBySlot.bracelet?.data?.stats||[]).find(s=>s.index===16)?.value ?? ''"
+    },
+    {
+      "id": "braceletSwift",
+      "expr": "($.itemBySlot.bracelet?.data?.stats||[]).find(s=>s.index===18)?.value ?? ''"
+    },
+    {
+      "id": "braceletMain",
+      "expr": "($.itemBySlot.bracelet?.data?.stats||[]).find(s=>s.index===11)?.value ?? ''",
+      "comment": "Bracelet main stat (index 11, all main-stat types) -> AU24"
+    },
+    {
+      "id": "braceletStats",
+      "expr": "$.itemBySlot.bracelet?.data?.stats ?? []",
+      "comment": "Raw, unfiltered bracelet stat-line objects ({index,value,...}). Canonical - the sheet decides which lines render and how: the AU25-28 cells share expr/statLineText.ts, which keeps only stats present in data/stat_lines.json, renders them to text, and uses each cell's transformArg (0-3) to pick the Nth rendered line (so they pack contiguously regardless of which raw stats lack text)."
+    },
+    {
+      "id": "braceletFlatWp",
+      "expr": "($.itemBySlot.bracelet?.data?.stats||[]).find(s=>s.index===151)?.value ?? ''"
+    },
+    {
+      "id": "braceletAllyDmg",
+      "expr": "($.itemBySlot.bracelet?.data?.stats||[]).find(s=>s.index===16000001)?.value ?? ''"
+    },
+    {
+      "id": "braceletAllyAtk",
+      "expr": "($.itemBySlot.bracelet?.data?.stats||[]).find(s=>s.index===0)?.value ?? ''"
+    },
+    {
+      "id": "braceletCritDmgTier",
+      "exprFile": "expr/braceletCritDmgTier.ts",
+      "comment": "Crit dmg tier 1(high)-3(low)"
+    },
+    {
+      "id": "magickStreamBooks",
+      "exprFile": "expr/engravingBooks.ts", "params": {"engravingId":1251},
+      "comment": "BB21: Magick Stream engraving grade/level. Found in root.engravings by id 1251 (Ability.json engrave id 251 + 1000 offset used by the character engraving list). Canonical token: engrave_grade05 = full relic -> 20; engrave_grade04 = relic -> floor(progress/5)*5 (5/10/15); a relic level below 5, or any lower grade -> 'legendary'. The sheet renders 'Relic N' / 'Legendary'. '' when the engraving isn't slotted."
+    },
+    {
+      "id": "awakeningBooks",
+      "exprFile": "expr/engravingBooks.ts", "params": {"engravingId":1255},
+      "comment": "BB24: Awakening engraving grade/level. Found in root.engravings by id 1255 (Ability.json engrave id 255 + 1000). NB: the ability-STONE engraving list uses the un-offset id 255 (see awakeningRock/stoneEngravings) - different list, different convention. Same grade/level token as magickStreamBooks (relic level <5 or sub-relic -> 'legendary')."
+    },
+    {
+      "id": "awakeningRock",
+      "exprFile": "expr/awakeningRock.ts",
+      "comment": "BC24: activation level (0-4) of the awakening engraving (id 255) on the ability stone (see stoneEngravings). Canonical number; the sheet transform renders 'Stone Lv. N'. '' when no stone."
+    },
+    {
+      "id": "leapCdrCommon",
+      "exprFile": "expr/leapCdrCommon.ts",
+      "comment": "Leap CDR: class's 'Release Potential' node level, resolved per class (Bard 2215400 / Paladin 2365400 / Valkyrie 2485400 / Artist 2315400). See expr/leapCdrCommon.ts."
+    },
+    {
+      "id": "leapCdrArtist",
+      "expr": "(root.arkPassive.leap.find(n=>n.id===2315600)||{level:0}).level",
+      "comment": "Leap CDR artist-only 'Dragon Gem' node 2315600 (0 for non-artist)"
+    },
+    {
+      "id": "ap1Cooldown",
+      "expr": "$.classSkills.ap1?.effectiveCooldown ?? ''",
+      "comment": "BD3: cooldown (ms, raw from skills.json) of the class's ap1 skill."
+    },
+    {
+      "id": "identityDmgGem",
+      "exprFile": "expr/identityDmgGem.ts",
+      "comment": "B11: level (1-10) of the identity-damage gem - the equipped gem (root.gems) carrying an effect of type 65 (identity damage), e.g. the support's Doomfire gem. Level comes from ref.gems[gem.id].level; '' when no such gem is slotted. Unlike skillGems (type 5/27, keyed by target skill), the identity gem is not tied to a skill, so it's resolved directly here."
+    },
+    {
+      "id": "tSkillCooldown",
+      "exprFile": "expr/tSkillCooldown.ts",
+      "comment": "BD11: default (base) cooldown (ms, raw from skills.json) of the class's T skill - a fixed skill id per class (Bard Aria 21300 / Paladin Divine Justice 36260 / Valkyrie Divine Confirmation 48510 / Artist Dragon Engraving 31950). No tripod reduction is applied (default cooldown). The sheet converts ms->seconds via the BD11 transform."
+    },
+    {
+      "id": "ap1SkillDmgGem",
+      "exprFile": "expr/skillGem.ts", "params": {"slot":"ap1","kind":"dmg"},
+      "comment": "BB3: skill-damage gem level (type 5) on the class's ap1 skill; '' when no damage gem is slotted on it."
+    },
+    {
+      "id": "ap1SkillCdrGem",
+      "exprFile": "expr/skillGem.ts", "params": {"slot":"ap1","kind":"cdr"},
+      "comment": "BC3: skill-cooldown gem level (type 27) on the class's ap1 skill; '' when none."
+    },
+    {
+      "id": "ap2Cooldown",
+      "expr": "$.classSkills.ap2?.effectiveCooldown ?? ''",
+      "comment": "BD4: cooldown (ms) of the class's ap2 skill."
+    },
+    {
+      "id": "ap2SkillDmgGem",
+      "exprFile": "expr/skillGem.ts", "params": {"slot":"ap2","kind":"dmg"},
+      "comment": "BB4: skill-damage gem level on the class's ap2 skill."
+    },
+    {
+      "id": "ap2SkillCdrGem",
+      "exprFile": "expr/skillGem.ts", "params": {"slot":"ap2","kind":"cdr"},
+      "comment": "BC4: skill-cooldown gem level on the class's ap2 skill."
+    },
+    {
+      "id": "ap1BuffLevel",
+      "expr": "$.classSkills.ap1?.level ?? ''",
+      "comment": "BB17: the ap1 AP-buff skill's level (from the snapshot's root.skills)."
+    },
+    {
+      "id": "ap2BuffLevel",
+      "expr": "$.classSkills.ap2?.level ?? ''",
+      "comment": "BB18: the ap2 AP-buff skill's level (from the snapshot's root.skills)."
+    },
+    {
+      "id": "brandCooldown",
+      "expr": "$.classSkills.brand?.effectiveCooldown ?? ''",
+      "comment": "BD5: cooldown (ms) of the class's (single, build-selected) brand skill."
+    },
+    {
+      "id": "brandSkillDmgGem",
+      "exprFile": "expr/skillGem.ts", "params": {"slot":"brand","kind":"dmg"},
+      "comment": "BB5: skill-damage gem level on the class's brand skill."
+    },
+    {
+      "id": "brandSkillCdrGem",
+      "exprFile": "expr/skillGem.ts", "params": {"slot":"brand","kind":"cdr"},
+      "comment": "BC5: skill-cooldown gem level on the class's brand skill."
+    },
+    {
+      "id": "skill6DmgGem",
+      "expr": "$.otherSkills[0]?.dmg ?? ''",
+      "comment": "BB6: skill-damage gem level on the player's 1st other equipped skill (non ap1/ap2/brand)."
+    },
+    {
+      "id": "skill6CdrGem",
+      "expr": "$.otherSkills[0]?.cdr ?? ''",
+      "comment": "BC6: skill-cooldown gem level on that skill."
+    },
+    {
+      "id": "skill6Cooldown",
+      "expr": "$.otherSkills[0]?.cooldown ?? ''",
+      "comment": "BD6: effective cooldown (ms, after taken cooldown tripods) of that skill."
+    },
+    {
+      "id": "skill7DmgGem",
+      "expr": "$.otherSkills[1]?.dmg ?? ''",
+      "comment": "BB7: skill-damage gem level on the player's 2nd other equipped skill (non ap1/ap2/brand)."
+    },
+    {
+      "id": "skill7CdrGem",
+      "expr": "$.otherSkills[1]?.cdr ?? ''",
+      "comment": "BC7: skill-cooldown gem level on that skill."
+    },
+    {
+      "id": "skill7Cooldown",
+      "expr": "$.otherSkills[1]?.cooldown ?? ''",
+      "comment": "BD7: effective cooldown (ms, after taken cooldown tripods) of that skill."
+    },
+    {
+      "id": "skill8DmgGem",
+      "expr": "$.otherSkills[2]?.dmg ?? ''",
+      "comment": "BB8: skill-damage gem level on the player's 3rd other equipped skill (non ap1/ap2/brand)."
+    },
+    {
+      "id": "skill8CdrGem",
+      "expr": "$.otherSkills[2]?.cdr ?? ''",
+      "comment": "BC8: skill-cooldown gem level on that skill."
+    },
+    {
+      "id": "skill8Cooldown",
+      "expr": "$.otherSkills[2]?.cooldown ?? ''",
+      "comment": "BD8: effective cooldown (ms, after taken cooldown tripods) of that skill."
+    },
+    {
+      "id": "skill9DmgGem",
+      "expr": "$.otherSkills[3]?.dmg ?? ''",
+      "comment": "BB9: skill-damage gem level on the player's 4th other equipped skill (non ap1/ap2/brand)."
+    },
+    {
+      "id": "skill9CdrGem",
+      "expr": "$.otherSkills[3]?.cdr ?? ''",
+      "comment": "BC9: skill-cooldown gem level on that skill."
+    },
+    {
+      "id": "skill9Cooldown",
+      "expr": "$.otherSkills[3]?.cooldown ?? ''",
+      "comment": "BD9: effective cooldown (ms, after taken cooldown tripods) of that skill."
+    },
+    {
+      "id": "skill10DmgGem",
+      "expr": "$.otherSkills[4]?.dmg ?? ''",
+      "comment": "BB10: skill-damage gem level on the player's 5th other equipped skill (non ap1/ap2/brand)."
+    },
+    {
+      "id": "skill10CdrGem",
+      "expr": "$.otherSkills[4]?.cdr ?? ''",
+      "comment": "BC10: skill-cooldown gem level on that skill."
+    },
+    {
+      "id": "skill10Cooldown",
+      "expr": "$.otherSkills[4]?.cooldown ?? ''",
+      "comment": "BD10: effective cooldown (ms, after taken cooldown tripods) of that skill."
+    },
+    {
+      "id": "dpsGemmedSkills",
+      "exprFile": "expr/dpsGems.ts",
+      "comment": "Source for the DPS tab's gem block (H3:I11), bound as character='dps'. Every gemmed skill as {dmg,cdr} gem-level pairs in gem-equip order, covering BOTH single-skill gems (effect type 5/27) AND skill-GROUP gems (type 34/35 -> raw_data/GemSkillGroup.json via ref.gem_skill_groups): DPS skills are mostly gemmed by group, so type 5/27 alone misses most of them. Nothing is excluded (a support-class DPS still lists ap1/ap2/brand). The sheet's expr/gemLevel.ts transform picks [row].dmg or .cdr per cell. See expr/dpsGems.ts."
+    }
+  ]
+}

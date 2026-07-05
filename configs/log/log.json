@@ -1,0 +1,145 @@
+{
+  "key": "bebok-3.8.1",
+  "source": "log",
+  "version": {
+    "path": "encounterDamageStats.misc.version",
+    "supported": "<=1.47.0"
+  },
+  "comment": "LOA Logs <= 1.47.0. root = the encounter object. `players` is bound to the selected party's PLAYER entities; `member` to the focused support (or null). Intermediates with scope:'member' re-bind `players` to just [member], which is how the same expression form is reused to filter a single member instead of the whole party.",
+  "rootPath": "data[0].encounterInfo.encounter",
+  "rootPathFallbacks": [
+    "data[1].encounterInfo.encounter",
+    "data[1].data.encounterInfo.encounter"
+  ],
+  "refData": [
+    "skills",
+    "support_specs"
+  ],
+  "intermediates": [
+    {
+      "id": "dpsPlayers",
+      "scope": "party",
+      "expr": "players.filter(p=>p.damageStats && p.damageStats.damageDealt>0 && !(ref.support_specs||[]).includes(p.spec))",
+      "comment": "Party DPS entities: dealt damage AND not a support (by spec - data/support_specs.json, the same list scraper.ts uses). Supports DO deal non-zero damage, so damageDealt>0 alone does not exclude them; the spec check does."
+    },
+    {
+      "id": "partyDamageDealt",
+      "scope": "party",
+      "exprFile": "expr/partyDamageDealt.ts",
+      "comment": "Uptime denominator: party-wide BUFFABLE damage (damageDealt minus fixed/unbuffable damage - hyper-awakening + special skills). See expr/partyDamageDealt.ts."
+    },
+    {
+      "id": "partyBuffedBySupport",
+      "scope": "party",
+      "expr": "sum($.dpsPlayers, p=>p.damageStats.buffedBySupport||0)"
+    },
+    {
+      "id": "partyDebuffedBySupport",
+      "scope": "party",
+      "expr": "sum($.dpsPlayers, p=>p.damageStats.debuffedBySupport||0)"
+    },
+    {
+      "id": "partyBuffedByIdentity",
+      "scope": "party",
+      "expr": "sum($.dpsPlayers, p=>p.damageStats.buffedByIdentity||0)"
+    },
+    {
+      "id": "partyBuffedByHat",
+      "scope": "party",
+      "expr": "sum($.dpsPlayers, p=>p.damageStats.buffedByHat||0)"
+    }
+  ],
+  "fields": [
+    {
+      "id": "bossName",
+      "expr": "root.currentBossName",
+      "comment": "Boss/content name (sheet may map to content type)"
+    },
+    {
+      "id": "specPoints",
+      "scope": "member",
+      "exprFile": "expr/arkPassivePoints.ts",
+      "params": {
+        "nodeId": 1010200
+      },
+      "comment": "Support's ark-passive Spec evolution points from the log (id 1010200). Phase-1 preview only - not a cell; the UI uses it to resolve the pet 'auto' choice before phase 2."
+    },
+    {
+      "id": "swiftPoints",
+      "scope": "member",
+      "exprFile": "expr/arkPassivePoints.ts",
+      "params": {
+        "nodeId": 1010400
+      },
+      "comment": "Support's ark-passive Swiftness evolution points from the log (id 1010400). Phase-1 preview only."
+    },
+    {
+      "id": "apBuffUptime",
+      "expr": "$.partyDamageDealt ? (($.partyBuffedBySupport/$.partyDamageDealt)).toFixed(4) : ''",
+      "comment": "AP buff uptime = party buffedBySupport / party damageDealt"
+    },
+    {
+      "id": "apBuffUptimeProportion",
+      "exprFile": "expr/apBuffUptimeProportion.ts",
+      "comment": "BC17: of the party's attack-power-buff damage (Attack Buff Categorization - encounterDamageStats.buffs[id].uniqueGroup in atkPwrGrp [101105 Pala, 314004 Artist, 101204 Bard, 480030 Valk]), the proportion attributable to the support's ap1 skill. Numerator = AP-buffedBy damage whose buff source.skill.id (kept as buffs[id].skillId) is an ap1 skill (ref.skills filtered to type==='ap1', e.g. Bard Heavenly Tune 21160); denominator = all AP-buffedBy damage (ap1 + ap2). A party has one support of one class so the ap1 set is effectively that class's single ap1 id. Requires the buffs {uniqueGroup,skillId} projection kept by scrapeStrip.ts (STRIP_VERSION 3)."
+    },
+    {
+      "id": "brandUptime",
+      "expr": "$.partyDamageDealt ? (($.partyDebuffedBySupport/$.partyDamageDealt)).toFixed(4) : ''"
+    },
+    {
+      "id": "identityUptime",
+      "expr": "$.partyDamageDealt ? (($.partyBuffedByIdentity/$.partyDamageDealt)).toFixed(4) : ''"
+    },
+    {
+      "id": "hatUptime",
+      "expr": "$.partyDamageDealt ? (($.partyBuffedByHat/$.partyDamageDealt)).toFixed(4) : ''"
+    },
+    {
+      "id": "cheersUptime",
+      "exprFile": "expr/buffUptime.ts",
+      "params": {
+        "ranges": [
+          [
+            605100081,
+            605100084
+          ]
+        ]
+      },
+      "comment": "Cheers uptime: 'Cheers' is the community's (outdated) name for this buff - SkillBuff.json now names it 'Pray', uniqueGroup 605100081 with 4 tiers (ids 605100081-605100084). The old uniqueGroup 605000043 ('Cheers' ids 605000045-605000048) is the prior version's ids and no longer applies."
+    },
+    {
+      "id": "majorChordWingsUptime",
+      "exprFile": "expr/buffUptime.ts",
+      "params": {
+        "ranges": [
+          [
+            214020,
+            214028
+          ],
+          [
+            480024,
+            480026
+          ]
+        ]
+      },
+      "comment": "BJ15: bard Major Chord (buff categories 214020-214028) OR valk Wings of Freedom (480024-480026). A party has a single support of one class, so the ranges are mutually exclusive and summing both yields the right cell value regardless of support type."
+    },
+    {
+      "id": "strengthOrbUptime",
+      "exprFile": "expr/buffUptime.ts",
+      "params": {
+        "prefix": 5234
+      },
+      "comment": "Strength orb uptime: buff ids 523401-523493 (SkillBuff.json name 'Strength Orb'; hundreds-place prefix 5234, not a tens-place prefix)."
+    },
+    {
+      "id": "flashOrbUptime",
+      "exprFile": "expr/buffUptime.ts",
+      "params": {
+        "prefix": 5235
+      },
+      "comment": "Flash orb uptime: buff ids 523501-523593 (SkillBuff.json name 'Flash Orb'; hundreds-place prefix 5235, not a tens-place prefix)."
+    }
+  ]
+}

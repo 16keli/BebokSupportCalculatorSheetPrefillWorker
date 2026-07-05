@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.wrangler/
+*.log
+.DS_Store
+.env
+.env.local
+.claude
+raw_data/
+planning/samples

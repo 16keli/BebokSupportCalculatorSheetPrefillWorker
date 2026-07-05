@@ -1,0 +1,1196 @@
+[
+  {
+    "id": 36000,
+    "name": "Basic Attack",
+    "cooldown": 0,
+    "classId": 105
+  },
+  {
+    "id": 36001,
+    "name": "Sacred Executioner Basic Attack",
+    "cooldown": 0,
+    "classId": 105
+  },
+  {
+    "id": 36010,
+    "name": "Unarmed Basic Attack",
+    "cooldown": 0,
+    "classId": 105
+  },
+  {
+    "id": 36020,
+    "name": "Sprint",
+    "cooldown": 7000,
+    "classId": 105
+  },
+  {
+    "id": 36025,
+    "name": "Stand Up",
+    "cooldown": 30000,
+    "classId": 105
+  },
+  {
+    "id": 36026,
+    "name": "PvP Forced Wakeup",
+    "cooldown": 0,
+    "classId": 105
+  },
+  {
+    "id": 36030,
+    "name": "Spin Slash",
+    "cooldown": 8000,
+    "classId": 105
+  },
+  {
+    "id": 36040,
+    "name": "Flash Thrust",
+    "cooldown": 8000,
+    "classId": 105
+  },
+  {
+    "id": 36050,
+    "name": "Light Shock",
+    "cooldown": 8000,
+    "classId": 105,
+    "type": "brand",
+    "cdrTripods": [
+      {
+        "slot": 7,
+        "tier": 3,
+        "option": 1,
+        "cd": 6000
+      }
+    ]
+  },
+  {
+    "id": 36060,
+    "name": "Light of Judgment",
+    "cooldown": 15000,
+    "classId": 105
+  },
+  {
+    "id": 36070,
+    "name": "Charge",
+    "cooldown": 12000,
+    "classId": 105,
+    "cdrTripods": [
+      {
+        "slot": 2,
+        "tier": 1,
+        "option": 2,
+        "cd": -4000
+      }
+    ]
+  },
+  {
+    "id": 36080,
+    "name": "Sword of Justice",
+    "cooldown": 15000,
+    "classId": 105,
+    "type": "brand",
+    "cdrTripods": [
+      {
+        "slot": 1,
+        "tier": 1,
+        "option": 1,
+        "cd": -3500
+      }
+    ]
+  },
+  {
+    "id": 36090,
+    "name": "Flash Slash",
+    "cooldown": 15000,
+    "classId": 105
+  },
+  {
+    "id": 36100,
+    "name": "Holy Explosion",
+    "cooldown": 24000,
+    "classId": 105,
+    "type": "brand"
+  },
+  {
+    "id": 36110,
+    "name": "Punishment",
+    "cooldown": 15000,
+    "classId": 105
+  },
+  {
+    "id": 36120,
+    "name": "Holy Area",
+    "cooldown": 18000,
+    "classId": 105,
+    "cdrTripods": [
+      {
+        "slot": 1,
+        "tier": 1,
+        "option": 1,
+        "cd": -4000
+      }
+    ]
+  },
+  {
+    "id": 36130,
+    "name": "Dash Slash",
+    "cooldown": 18000,
+    "classId": 105,
+    "cdrTripods": [
+      {
+        "slot": 3,
+        "tier": 1,
+        "option": 3,
+        "cd": -6000
+      }
+    ]
+  },
+  {
+    "id": 36140,
+    "name": "Holy Protection",
+    "cooldown": 30000,
+    "classId": 105,
+    "cdrTripods": [
+      {
+        "slot": 8,
+        "tier": 3,
+        "option": 2,
+        "cd": 6000
+      }
+    ]
+  },
+  {
+    "id": 36150,
+    "name": "God's Decree",
+    "cooldown": 20000,
+    "classId": 105
+  },
+  {
+    "id": 36160,
+    "name": "Executioner's Sword",
+    "cooldown": 18000,
+    "classId": 105
+  },
+  {
+    "id": 36170,
+    "name": "Wrath of God",
+    "cooldown": 27000,
+    "classId": 105,
+    "type": "ap2"
+  },
+  {
+    "id": 36180,
+    "name": "Execution of Justice",
+    "cooldown": 24000,
+    "classId": 105
+  },
+  {
+    "id": 36190,
+    "name": "Holy Sword",
+    "cooldown": 27000,
+    "classId": 105
+  },
+  {
+    "id": 36200,
+    "name": "Heavenly Blessings",
+    "cooldown": 36000,
+    "classId": 105,
+    "type": "ap1"
+  },
+  {
+    "id": 36210,
+    "name": "Alithanes's Judgment",
+    "cooldown": 300000,
+    "classId": 105
+  },
+  {
+    "id": 36220,
+    "name": "Alithanes's Light",
+    "cooldown": 300000,
+    "classId": 105
+  },
+  {
+    "id": 36230,
+    "name": "Alithanes's Devotion",
+    "cooldown": 300000,
+    "classId": 105
+  },
+  {
+    "id": 36240,
+    "name": "Alithanes's Rage",
+    "cooldown": 300000,
+    "classId": 105
+  },
+  {
+    "id": 36250,
+    "name": "Execution of Judgment",
+    "cooldown": 45000,
+    "classId": 105
+  },
+  {
+    "id": 36260,
+    "name": "Divine Justice",
+    "cooldown": 60000,
+    "classId": 105
+  },
+  {
+    "id": 36270,
+    "name": "Judgment Blade",
+    "cooldown": 20000,
+    "classId": 105
+  },
+  {
+    "id": 36280,
+    "name": "Divine Wave",
+    "cooldown": 36000,
+    "classId": 105
+  },
+  {
+    "id": 36800,
+    "name": "Holy Aura",
+    "cooldown": 2000,
+    "classId": 105
+  },
+  {
+    "id": 36810,
+    "name": "Remove Holy Aura",
+    "cooldown": 2000,
+    "classId": 105
+  },
+  {
+    "id": 36900,
+    "name": "Sacred Executioner",
+    "cooldown": 5000,
+    "classId": 105
+  },
+  {
+    "id": 36910,
+    "name": "Remove Sacred Executioner",
+    "cooldown": 5000,
+    "classId": 105
+  },
+  {
+    "id": 48020,
+    "name": "Enter",
+    "cooldown": 7000,
+    "classId": 113
+  },
+  {
+    "id": 48030,
+    "name": "Stand Up",
+    "cooldown": 30000,
+    "classId": 113
+  },
+  {
+    "id": 48040,
+    "name": "Release Light",
+    "cooldown": 0,
+    "classId": 113
+  },
+  {
+    "id": 48041,
+    "name": "Release Light",
+    "cooldown": 0,
+    "classId": 113
+  },
+  {
+    "id": 48042,
+    "name": "Release Light",
+    "cooldown": 0,
+    "classId": 113
+  },
+  {
+    "id": 48050,
+    "name": "Light of the Faithful",
+    "cooldown": 0,
+    "classId": 113
+  },
+  {
+    "id": 48051,
+    "name": "Light of the Faithful",
+    "cooldown": 0,
+    "classId": 113
+  },
+  {
+    "id": 48052,
+    "name": "Light of the Faithful",
+    "cooldown": 0,
+    "classId": 113
+  },
+  {
+    "id": 48053,
+    "name": "Light of the Faithful",
+    "cooldown": 0,
+    "classId": 113
+  },
+  {
+    "id": 48054,
+    "name": "Light of the Faithful",
+    "cooldown": 0,
+    "classId": 113
+  },
+  {
+    "id": 48060,
+    "name": "Shining Knight",
+    "cooldown": 0,
+    "classId": 113
+  },
+  {
+    "id": 48070,
+    "name": "Final Splendor",
+    "cooldown": 0,
+    "classId": 113
+  },
+  {
+    "id": 48100,
+    "name": "Foresight Slash",
+    "cooldown": 8000,
+    "classId": 113,
+    "cdrTripods": [
+      {
+        "slot": 8,
+        "tier": 3,
+        "option": 2,
+        "cd": 8000
+      }
+    ]
+  },
+  {
+    "id": 48110,
+    "name": "Meteor Strike",
+    "cooldown": 12000,
+    "classId": 113,
+    "cdrTripods": [
+      {
+        "slot": 8,
+        "tier": 3,
+        "option": 2,
+        "cd": -11000
+      }
+    ]
+  },
+  {
+    "id": 48120,
+    "name": "Lunging Stab",
+    "cooldown": 14000,
+    "classId": 113
+  },
+  {
+    "id": 48130,
+    "name": "Crushing Condemnation",
+    "cooldown": 16000,
+    "classId": 113
+  },
+  {
+    "id": 48140,
+    "name": "Judgment Stigmata",
+    "cooldown": 20000,
+    "classId": 113
+  },
+  {
+    "id": 48150,
+    "name": "Whisper of Judgment",
+    "cooldown": 26000,
+    "classId": 113
+  },
+  {
+    "id": 48160,
+    "name": "Sword of Revelation",
+    "cooldown": 16000,
+    "classId": 113,
+    "cdrTripods": [
+      {
+        "slot": 4,
+        "tier": 2,
+        "option": 1,
+        "cd": -6000
+      },
+      {
+        "slot": 8,
+        "tier": 3,
+        "option": 2,
+        "cd": -15000
+      }
+    ]
+  },
+  {
+    "id": 48170,
+    "name": "Approach of Revelation",
+    "cooldown": 12000,
+    "classId": 113
+  },
+  {
+    "id": 48180,
+    "name": "Execution of Revelation",
+    "cooldown": 24000,
+    "classId": 113
+  },
+  {
+    "id": 48190,
+    "name": "Requiem Storm",
+    "cooldown": 26000,
+    "classId": 113
+  },
+  {
+    "id": 48200,
+    "name": "Requiem Rain",
+    "cooldown": 34000,
+    "classId": 113,
+    "cdrTripods": [
+      {
+        "slot": 8,
+        "tier": 3,
+        "option": 2,
+        "cd": -33000
+      }
+    ]
+  },
+  {
+    "id": 48210,
+    "name": "Requiem Ash",
+    "cooldown": 35000,
+    "classId": 113
+  },
+  {
+    "id": 48220,
+    "name": "Truth's Decree",
+    "cooldown": 8000,
+    "classId": 113,
+    "type": "brand",
+    "cdrTripods": [
+      {
+        "slot": 4,
+        "tier": 2,
+        "option": 1,
+        "cd": 12000
+      },
+      {
+        "slot": 8,
+        "tier": 3,
+        "option": 2,
+        "cd": -15000
+      }
+    ]
+  },
+  {
+    "id": 48230,
+    "name": "Circle of Truth",
+    "cooldown": 18000,
+    "classId": 113,
+    "type": "brand"
+  },
+  {
+    "id": 48240,
+    "name": "Salvation Site",
+    "cooldown": 20000,
+    "classId": 113
+  },
+  {
+    "id": 48250,
+    "name": "Seraphic Oath",
+    "cooldown": 27000,
+    "classId": 113,
+    "type": "ap2"
+  },
+  {
+    "id": 48260,
+    "name": "Blessing of Salvation",
+    "cooldown": 30000,
+    "classId": 113
+  },
+  {
+    "id": 48270,
+    "name": "Seraphic Leap",
+    "cooldown": 36000,
+    "classId": 113,
+    "type": "ap1"
+  },
+  {
+    "id": 48500,
+    "name": "Cataclysm",
+    "cooldown": 65000,
+    "classId": 113
+  },
+  {
+    "id": 48510,
+    "name": "Divine Confirmation",
+    "cooldown": 60000,
+    "classId": 113
+  },
+  {
+    "id": 48520,
+    "name": "Brundia's Epiphany",
+    "cooldown": 300000,
+    "classId": 113
+  },
+  {
+    "id": 48530,
+    "name": "Brundia's Ritual",
+    "cooldown": 300000,
+    "classId": 113
+  },
+  {
+    "id": 48540,
+    "name": "Brundia's Incarnation",
+    "cooldown": 300000,
+    "classId": 113
+  },
+  {
+    "id": 48550,
+    "name": "Brundia's Sanctuary",
+    "cooldown": 300000,
+    "classId": 113
+  },
+  {
+    "id": 21000,
+    "name": "Weapon Attack",
+    "cooldown": 0,
+    "classId": 204
+  },
+  {
+    "id": 21010,
+    "name": "Hand Attack",
+    "cooldown": 0,
+    "classId": 204
+  },
+  {
+    "id": 21215,
+    "name": "Stand Up",
+    "cooldown": 30000,
+    "classId": 204
+  },
+  {
+    "id": 21216,
+    "name": "Stand Up",
+    "cooldown": 0,
+    "classId": 204
+  },
+  {
+    "id": 21020,
+    "name": "Sound Shock",
+    "cooldown": 8000,
+    "classId": 204,
+    "type": "brand",
+    "cdrTripods": [
+      {
+        "slot": 1,
+        "tier": 1,
+        "option": 1,
+        "cd": -2000
+      }
+    ]
+  },
+  {
+    "id": 21050,
+    "name": "Sound Wave",
+    "cooldown": 8000,
+    "classId": 204
+  },
+  {
+    "id": 21060,
+    "name": "Dissonance",
+    "cooldown": 8000,
+    "classId": 204,
+    "cdrTripods": [
+      {
+        "slot": 7,
+        "tier": 3,
+        "option": 1,
+        "cd": 2000
+      }
+    ]
+  },
+  {
+    "id": 21070,
+    "name": "Wind of Music",
+    "cooldown": 18000,
+    "classId": 204,
+    "cdrTripods": [
+      {
+        "slot": 2,
+        "tier": 1,
+        "option": 2,
+        "cd": -4000
+      },
+      {
+        "slot": 7,
+        "tier": 3,
+        "option": 1,
+        "cd": 6000
+      }
+    ]
+  },
+  {
+    "id": 21079,
+    "name": "Wind of Music",
+    "cooldown": 18000,
+    "classId": 204
+  },
+  {
+    "id": 21080,
+    "name": "Prelude of Storm",
+    "cooldown": 16000,
+    "classId": 204,
+    "cdrTripods": [
+      {
+        "slot": 2,
+        "tier": 1,
+        "option": 2,
+        "cd": -3000
+      }
+    ]
+  },
+  {
+    "id": 21090,
+    "name": "Stigma",
+    "cooldown": 16000,
+    "classId": 204
+  },
+  {
+    "id": 21100,
+    "name": "Sound Illusion",
+    "cooldown": 8000,
+    "classId": 204
+  },
+  {
+    "id": 21110,
+    "name": "Note Bundle",
+    "cooldown": 12000,
+    "classId": 204,
+    "cdrTripods": [
+      {
+        "slot": 2,
+        "tier": 1,
+        "option": 2,
+        "cd": -11000
+      }
+    ]
+  },
+  {
+    "id": 21120,
+    "name": "Soundholic",
+    "cooldown": 24000,
+    "classId": 204,
+    "cdrTripods": [
+      {
+        "slot": 4,
+        "tier": 2,
+        "option": 1,
+        "cd": 0
+      }
+    ]
+  },
+  {
+    "id": 21130,
+    "name": "Serenade of Salvation",
+    "cooldown": 1000,
+    "classId": 204
+  },
+  {
+    "id": 21131,
+    "name": "Serenade of Salvation",
+    "cooldown": 1000,
+    "classId": 204
+  },
+  {
+    "id": 21132,
+    "name": "Serenade of Salvation",
+    "cooldown": 1000,
+    "classId": 204
+  },
+  {
+    "id": 21133,
+    "name": "Serenade of Salvation",
+    "cooldown": 1000,
+    "classId": 204
+  },
+  {
+    "id": 21140,
+    "name": "Serenade of Courage",
+    "cooldown": 2000,
+    "classId": 204
+  },
+  {
+    "id": 21141,
+    "name": "Serenade of Courage",
+    "cooldown": 2000,
+    "classId": 204
+  },
+  {
+    "id": 21142,
+    "name": "Serenade of Courage",
+    "cooldown": 2000,
+    "classId": 204
+  },
+  {
+    "id": 21143,
+    "name": "Serenade of Courage",
+    "cooldown": 2000,
+    "classId": 204
+  },
+  {
+    "id": 21147,
+    "name": "Tempest",
+    "cooldown": 1000,
+    "classId": 204
+  },
+  {
+    "id": 21148,
+    "name": "Tempest",
+    "cooldown": 1000,
+    "classId": 204
+  },
+  {
+    "id": 21149,
+    "name": "Tempest",
+    "cooldown": 1000,
+    "classId": 204
+  },
+  {
+    "id": 21150,
+    "name": "Rhythm Buckshot",
+    "cooldown": 16000,
+    "classId": 204
+  },
+  {
+    "id": 21160,
+    "name": "Heavenly Tune",
+    "cooldown": 30000,
+    "classId": 204,
+    "type": "ap1",
+    "cdrTripods": [
+      {
+        "slot": 1,
+        "tier": 1,
+        "option": 1,
+        "cd": -6000
+      }
+    ]
+  },
+  {
+    "id": 21170,
+    "name": "Sonic Vibration",
+    "cooldown": 24000,
+    "classId": 204,
+    "type": "ap2"
+  },
+  {
+    "id": 21180,
+    "name": "Harp of Rhythm",
+    "cooldown": 24000,
+    "classId": 204
+  },
+  {
+    "id": 21230,
+    "name": "Symphonia",
+    "cooldown": 300000,
+    "classId": 204
+  },
+  {
+    "id": 21240,
+    "name": "Prelude of Death",
+    "cooldown": 24000,
+    "classId": 204,
+    "cdrTripods": [
+      {
+        "slot": 2,
+        "tier": 1,
+        "option": 2,
+        "cd": -5000
+      }
+    ]
+  },
+  {
+    "id": 21250,
+    "name": "Guardian Tune",
+    "cooldown": 30000,
+    "classId": 204,
+    "cdrTripods": [
+      {
+        "slot": 7,
+        "tier": 3,
+        "option": 1,
+        "cd": -50
+      }
+    ]
+  },
+  {
+    "id": 21260,
+    "name": "Rhapsody of Light",
+    "cooldown": 24000,
+    "classId": 204,
+    "cdrTripods": [
+      {
+        "slot": 2,
+        "tier": 1,
+        "option": 2,
+        "cd": -5000
+      }
+    ]
+  },
+  {
+    "id": 21270,
+    "name": "March",
+    "cooldown": 20000,
+    "classId": 204,
+    "cdrTripods": [
+      {
+        "slot": 1,
+        "tier": 1,
+        "option": 1,
+        "cd": -7000
+      }
+    ]
+  },
+  {
+    "id": 21280,
+    "name": "Oratorio",
+    "cooldown": 300000,
+    "classId": 204
+  },
+  {
+    "id": 21290,
+    "name": "Sonatina",
+    "cooldown": 21000,
+    "classId": 204,
+    "type": "brand",
+    "cdrTripods": [
+      {
+        "slot": 1,
+        "tier": 1,
+        "option": 1,
+        "cd": -7000
+      }
+    ]
+  },
+  {
+    "id": 21300,
+    "name": "Aria",
+    "cooldown": 90000,
+    "classId": 204
+  },
+  {
+    "id": 21310,
+    "name": "Vivace",
+    "cooldown": 70000,
+    "classId": 204
+  },
+  {
+    "id": 21320,
+    "name": "Symphony Melody",
+    "cooldown": 300000,
+    "classId": 204
+  },
+  {
+    "id": 21330,
+    "name": "Concerto",
+    "cooldown": 300000,
+    "classId": 204
+  },
+  {
+    "id": 21340,
+    "name": "Major Chord",
+    "cooldown": 500,
+    "classId": 204
+  },
+  {
+    "id": 21350,
+    "name": "Minor Chord",
+    "cooldown": 500,
+    "classId": 204
+  },
+  {
+    "id": 31000,
+    "name": "Weapon Attack",
+    "cooldown": 0,
+    "classId": 602
+  },
+  {
+    "id": 31010,
+    "name": "Hand Attack",
+    "cooldown": 0,
+    "classId": 602
+  },
+  {
+    "id": 31020,
+    "name": "Stroke: Spill",
+    "cooldown": 7000,
+    "classId": 602
+  },
+  {
+    "id": 31030,
+    "name": "Stroke: Here and There",
+    "cooldown": 30000,
+    "classId": 602
+  },
+  {
+    "id": 31040,
+    "name": "Stroke: Here and There",
+    "cooldown": 0,
+    "classId": 602
+  },
+  {
+    "id": 31050,
+    "name": "Moonfall",
+    "cooldown": 2000,
+    "classId": 602
+  },
+  {
+    "id": 31051,
+    "name": "Moonfall",
+    "cooldown": 2000,
+    "classId": 602
+  },
+  {
+    "id": 31060,
+    "name": "Paint: Shattering Strike",
+    "cooldown": 2000,
+    "classId": 602
+  },
+  {
+    "id": 31110,
+    "name": "Sunrise",
+    "cooldown": 1000,
+    "classId": 602
+  },
+  {
+    "id": 31120,
+    "name": "Sunrise",
+    "cooldown": 1000,
+    "classId": 602
+  },
+  {
+    "id": 31121,
+    "name": "Sunrise",
+    "cooldown": 1000,
+    "classId": 602
+  },
+  {
+    "id": 31130,
+    "name": "Sunrise",
+    "cooldown": 1000,
+    "classId": 602
+  },
+  {
+    "id": 31131,
+    "name": "Sunrise",
+    "cooldown": 1000,
+    "classId": 602
+  },
+  {
+    "id": 31140,
+    "name": "Sunrise",
+    "cooldown": 1000,
+    "classId": 602
+  },
+  {
+    "id": 31141,
+    "name": "Sunrise",
+    "cooldown": 1000,
+    "classId": 602
+  },
+  {
+    "id": 31145,
+    "name": "Rising Moon",
+    "cooldown": 30000,
+    "classId": 602
+  },
+  {
+    "id": 31200,
+    "name": "Stroke: Ink Shower",
+    "cooldown": 8000,
+    "classId": 602,
+    "cdrTripods": [
+      {
+        "slot": 8,
+        "tier": 3,
+        "option": 2,
+        "cd": -7000
+      }
+    ]
+  },
+  {
+    "id": 31210,
+    "name": "Stroke: Hopper",
+    "cooldown": 16000,
+    "classId": 602
+  },
+  {
+    "id": 31220,
+    "name": "Paint: Illusion Door",
+    "cooldown": 45000,
+    "classId": 602,
+    "cdrTripods": [
+      {
+        "slot": 8,
+        "tier": 3,
+        "option": 2,
+        "cd": -35000
+      }
+    ]
+  },
+  {
+    "id": 31230,
+    "name": "Paint: Ink Well",
+    "cooldown": 24000,
+    "classId": 602
+  },
+  {
+    "id": 31400,
+    "name": "Paint: Sunsketch",
+    "cooldown": 27000,
+    "classId": 602,
+    "type": "ap1"
+  },
+  {
+    "id": 31410,
+    "name": "Paint: Sun Well",
+    "cooldown": 30000,
+    "classId": 602,
+    "type": "ap2",
+    "cdrTripods": [
+      {
+        "slot": 1,
+        "tier": 1,
+        "option": 1,
+        "cd": -6000
+      }
+    ]
+  },
+  {
+    "id": 31420,
+    "name": "Paint: Drawing Orchids",
+    "cooldown": 24000,
+    "classId": 602,
+    "type": "brand",
+    "cdrTripods": [
+      {
+        "slot": 5,
+        "tier": 2,
+        "option": 2,
+        "cd": -7000
+      }
+    ]
+  },
+  {
+    "id": 31430,
+    "name": "Stroke: Sprinkle",
+    "cooldown": 14000,
+    "classId": 602
+  },
+  {
+    "id": 31440,
+    "name": "Paint: Inkrise",
+    "cooldown": 16000,
+    "classId": 602,
+    "cdrTripods": [
+      {
+        "slot": 6,
+        "tier": 2,
+        "option": 3,
+        "cd": 10000
+      }
+    ]
+  },
+  {
+    "id": 31450,
+    "name": "Paint: Starry Night",
+    "cooldown": 24000,
+    "classId": 602,
+    "cdrTripods": [
+      {
+        "slot": 6,
+        "tier": 2,
+        "option": 3,
+        "cd": -7000
+      }
+    ]
+  },
+  {
+    "id": 31460,
+    "name": "Paint: Butterfly Dream",
+    "cooldown": 16000,
+    "classId": 602,
+    "cdrTripods": [
+      {
+        "slot": 6,
+        "tier": 2,
+        "option": 3,
+        "cd": 4000
+      }
+    ]
+  },
+  {
+    "id": 31470,
+    "name": "Stroke: One Stroke",
+    "cooldown": 25000,
+    "classId": 602
+  },
+  {
+    "id": 31480,
+    "name": "Paint: Crane Wing",
+    "cooldown": 24000,
+    "classId": 602
+  },
+  {
+    "id": 31490,
+    "name": "Paint: Pouncing Tiger",
+    "cooldown": 30000,
+    "classId": 602,
+    "cdrTripods": [
+      {
+        "slot": 2,
+        "tier": 1,
+        "option": 2,
+        "cd": -11000
+      }
+    ]
+  },
+  {
+    "id": 31500,
+    "name": "Paint: Moonsketch",
+    "cooldown": 24000,
+    "classId": 602
+  },
+  {
+    "id": 31510,
+    "name": "Stroke: Upward Stroke",
+    "cooldown": 16000,
+    "classId": 602
+  },
+  {
+    "id": 31900,
+    "name": "Masterwork: Spectacle",
+    "cooldown": 300000,
+    "classId": 602
+  },
+  {
+    "id": 31910,
+    "name": "Masterwork: Efflorescence",
+    "cooldown": 300000,
+    "classId": 602
+  },
+  {
+    "id": 31920,
+    "name": "Holy Beast Summon: Phoenix",
+    "cooldown": 300000,
+    "classId": 602
+  },
+  {
+    "id": 31930,
+    "name": "Dream Blossom Garden",
+    "cooldown": 300000,
+    "classId": 602
+  },
+  {
+    "id": 31940,
+    "name": "Paint: Cattle Drive",
+    "cooldown": 45000,
+    "classId": 602
+  },
+  {
+    "id": 31950,
+    "name": "Paint: Dragon Engraving",
+    "cooldown": 72000,
+    "classId": 602
+  }
+]

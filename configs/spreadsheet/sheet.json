@@ -1,0 +1,912 @@
+{
+  "key": "bebok-3.8.1",
+  "version": "3.8.1",
+  "templateSheet": "https://docs.google.com/spreadsheets/d/1VrLqJFC0629j1MdCmhi3op52V8nU4WCVK-RTsZBp35g",
+  "sheetTitle": "",
+  "sheetTab": "Sup buff calc v3.81",
+  "comment": "Maps target cells (A1 notation) to field ids produced by the snapshot/log datasource configs. The field id is the common key joining sheet <-> datasource. A cell may also carry a `transform`/`transformFile` that reshapes the field's raw value into the written value (sheet-side, so datasources stay canonical and other spreadsheets can render the same data differently); transforms read `refData` below as `ref`.",
+  "refData": [
+    "stat_lines",
+    "encounters",
+    "cores",
+    "core_lines"
+  ],
+  "inputs": [
+    {
+      "id": "rosterSpec",
+      "label": "Roster-wide Specialization",
+      "type": "number",
+      "default": 75,
+      "section": "Specialization / Swiftness",
+      "help": "Flat Specialization from roster bonuses."
+    },
+    {
+      "id": "rosterSwift",
+      "label": "Roster-wide Swiftness",
+      "type": "number",
+      "default": 77,
+      "section": "Specialization / Swiftness",
+      "help": "Flat Swiftness from roster bonuses."
+    },
+    {
+      "id": "pet",
+      "label": "Pet stat bonus (+160)",
+      "type": "select",
+      "default": "swiftness",
+      "section": "Specialization / Swiftness",
+      "options": [
+        {
+          "value": "spec",
+          "label": "Specialization"
+        },
+        {
+          "value": "swiftness",
+          "label": "Swiftness"
+        },
+        {
+          "value": "other",
+          "label": "Other (no spec/swift bonus)"
+        }
+      ],
+      "help": "Pet adds +160 to the selected stat. Defaults to Specialization when the evolution spec allocation is maxed (30), otherwise Swiftness."
+    },
+    {
+      "id": "skinBonus",
+      "label": "Skin bonus",
+      "type": "range",
+      "default": 8,
+      "min": 0,
+      "max": 8,
+      "step": 0.5,
+      "unit": "%",
+      "section": "Main stat (str/dex/int)",
+      "help": "Main-stat % from legendary avatar skins (2% per slot, up to 8%)."
+    },
+    {
+      "id": "stronghold",
+      "label": "Stronghold farm bonus",
+      "type": "select",
+      "default": "1.0",
+      "section": "Main stat (str/dex/int)",
+      "options": [
+        {
+          "value": "0",
+          "label": "0%"
+        },
+        {
+          "value": "0.4",
+          "label": "0.4%"
+        },
+        {
+          "value": "0.7",
+          "label": "0.7%"
+        },
+        {
+          "value": "1.0",
+          "label": "1.0%"
+        }
+      ],
+      "help": "Main-stat % from stronghold research/farm."
+    }
+  ],
+  "cells": [
+    {
+      "cell": "F2",
+      "field": "class",
+      "transformFile": "expr/classDisplayName.ts"
+    },
+    {
+      "cell": "E6",
+      "field": "headGearTier",
+      "transformFile": "expr/gearTierLabel.ts",
+      "transformArg": "Headpiece"
+    },
+    {
+      "cell": "E7",
+      "field": "shoulderGearTier",
+      "transformFile": "expr/gearTierLabel.ts",
+      "transformArg": "Shoulderpiece"
+    },
+    {
+      "cell": "E8",
+      "field": "chestGearTier",
+      "transformFile": "expr/gearTierLabel.ts",
+      "transformArg": "Chestpiece"
+    },
+    {
+      "cell": "E9",
+      "field": "pantsGearTier",
+      "transformFile": "expr/gearTierLabel.ts",
+      "transformArg": "Pants"
+    },
+    {
+      "cell": "E10",
+      "field": "gloveGearTier",
+      "transformFile": "expr/gearTierLabel.ts",
+      "transformArg": "Gloves"
+    },
+    {
+      "cell": "E11",
+      "field": "weaponGearTier",
+      "transformFile": "expr/gearTierLabel.ts",
+      "transformArg": "Weapon"
+    },
+    {
+      "cell": "F6",
+      "field": "headHoning"
+    },
+    {
+      "cell": "G6",
+      "field": "headAdvHoning"
+    },
+    {
+      "cell": "F7",
+      "field": "shoulderHoning"
+    },
+    {
+      "cell": "G7",
+      "field": "shoulderAdvHoning"
+    },
+    {
+      "cell": "F8",
+      "field": "chestHoning"
+    },
+    {
+      "cell": "G8",
+      "field": "chestAdvHoning"
+    },
+    {
+      "cell": "F9",
+      "field": "pantsHoning"
+    },
+    {
+      "cell": "G9",
+      "field": "pantsAdvHoning"
+    },
+    {
+      "cell": "F10",
+      "field": "gloveHoning"
+    },
+    {
+      "cell": "G10",
+      "field": "gloveAdvHoning"
+    },
+    {
+      "cell": "F11",
+      "field": "weaponHoning"
+    },
+    {
+      "cell": "G11",
+      "field": "weaponAdvHoning"
+    },
+    {
+      "cell": "F14",
+      "field": "specStat"
+    },
+    {
+      "cell": "F15",
+      "field": "swiftStat"
+    },
+    {
+      "cell": "F16",
+      "field": "class",
+      "transform": "String(raw).toLowerCase() === 'bard' ? '15%' : ''",
+      "comment": "Identity Base: fixed 15% for bard only; blank for other classes (manual input)."
+    },
+    {
+      "cell": "F18",
+      "field": "skinBonus",
+      "format": "percent1",
+      "comment": "Main-stat % from skin bonus (advanced input, 0-8%)."
+    },
+    {
+      "cell": "BJ3",
+      "field": "strongholdBonus",
+      "format": "percent1",
+      "comment": "Main-stat % from stronghold farm bonus (advanced input)."
+    },
+    {
+      "cell": "F19",
+      "field": "stoneBonus",
+      "transform": "raw === '' || raw == null ? '' : (+raw >= 5 ? '9/7 and better' : 'worse than 9/7')",
+      "comment": "Sum of activated engraving levels on the ability stone (snapshot, penalties 800-803 excluded): >=5 -> '9/7 and better', else 'worse than 9/7'."
+    },
+    {
+      "cell": "F21",
+      "field": "karmaEvolution",
+      "transform": "raw === '' || raw == null ? '' : [0,1,5,9,13,17,21].filter(b => +raw >= b).length - 1",
+      "comment": "Karma evolution RANK from the raw level (snapshot): rank = index of the highest breakpoint [0,1,5,9,13,17,21] <= level, i.e. 0->0, 1-4->1, 5-8->2, 9-12->3, 13-16->4, 17-20->5, 21+->6."
+    },
+    {
+      "cell": "F22",
+      "field": "karmaEnlightenment"
+    },
+    {
+      "cell": "L31",
+      "field": "bossName",
+      "transformFile": "expr/bossContent.ts",
+      "comment": "Boss name -> 'Kazeros Raid' when the boss belongs to a raid in [Echidna .. Final Act: Kazeros] (data/encounters.json order); otherwise the raw boss name. See expr/bossContent.ts."
+    },
+    {
+      "cell": "Z4",
+      "field": "astroBrand"
+    },
+    {
+      "cell": "Z5",
+      "field": "astroAllyAtk"
+    },
+    {
+      "cell": "Z6",
+      "field": "astroAllyDamage"
+    },
+    {
+      "cell": "Y15",
+      "field": "orderSunCore",
+      "transformFile": "expr/orderCoreName.ts",
+      "comment": "Order Sun core id -> curated string via data/core_lines.json (falls back to raw id). See expr/orderCoreName.ts."
+    },
+    {
+      "cell": "AB11",
+      "field": "orderSunPoints"
+    },
+    {
+      "cell": "Y25",
+      "field": "orderMoonCore",
+      "transformFile": "expr/orderCoreName.ts"
+    },
+    {
+      "cell": "AB21",
+      "field": "orderMoonPoints"
+    },
+    {
+      "cell": "AF4",
+      "field": "chaosSunCore",
+      "transformFile": "expr/coreName.ts",
+      "comment": "Chaos Sun core id -> '<category> Core: <title> (<rarity>)' via data/cores.json. See expr/coreName.ts."
+    },
+    {
+      "cell": "AG4",
+      "field": "chaosSunPoints"
+    },
+    {
+      "cell": "AF13",
+      "field": "chaosMoonCore",
+      "transformFile": "expr/coreName.ts"
+    },
+    {
+      "cell": "AG13",
+      "field": "chaosMoonPoints"
+    },
+    {
+      "cell": "AF22",
+      "field": "chaosStarCore",
+      "transformFile": "expr/coreName.ts"
+    },
+    {
+      "cell": "AG22",
+      "field": "chaosStarPoints"
+    },
+    {
+      "cell": "AM6",
+      "field": "enlightMainT1"
+    },
+    {
+      "cell": "AM7",
+      "field": "enlightMainT2"
+    },
+    {
+      "cell": "AM8",
+      "field": "enlightMainT3"
+    },
+    {
+      "cell": "AM9",
+      "field": "enlightMainT4"
+    },
+    {
+      "cell": "AM12",
+      "field": "enlightSideT3"
+    },
+    {
+      "cell": "AM13",
+      "field": "enlightSideT4"
+    },
+    {
+      "cell": "AM17",
+      "field": "evoLuminary"
+    },
+    {
+      "cell": "AM18",
+      "field": "evoAdvance"
+    },
+    {
+      "cell": "AM19",
+      "field": "evoPrayer"
+    },
+    {
+      "cell": "AM23",
+      "field": "evoBoundlessMp"
+    },
+    {
+      "cell": "AM24",
+      "field": "evoGoddessBlessings"
+    },
+    {
+      "cell": "AM29",
+      "field": "evoUnlimitedMagick"
+    },
+    {
+      "cell": "AM30",
+      "field": "evoPassionateDance"
+    },
+    {
+      "cell": "AU3",
+      "field": "neckStats",
+      "transformFile": "expr/statLineText.ts",
+      "transformContext": "necklace",
+      "transformArg": 0,
+      "comment": "Necklace rolled lines in item order (base stats dropped); transformArg picks the Nth. See expr/statLineText.ts + data/stat_lines.json."
+    },
+    {
+      "cell": "AU4",
+      "field": "neckStats",
+      "transformFile": "expr/statLineText.ts",
+      "transformContext": "necklace",
+      "transformArg": 1
+    },
+    {
+      "cell": "AU5",
+      "field": "neckStats",
+      "transformFile": "expr/statLineText.ts",
+      "transformContext": "necklace",
+      "transformArg": 2
+    },
+    {
+      "cell": "AU6",
+      "field": "necklaceMain"
+    },
+    {
+      "cell": "AU9",
+      "field": "ear1Stats",
+      "transformFile": "expr/statLineText.ts",
+      "transformContext": "earring",
+      "transformArg": 0
+    },
+    {
+      "cell": "AU10",
+      "field": "ear1Stats",
+      "transformFile": "expr/statLineText.ts",
+      "transformContext": "earring",
+      "transformArg": 1
+    },
+    {
+      "cell": "AU11",
+      "field": "ear1Stats",
+      "transformFile": "expr/statLineText.ts",
+      "transformContext": "earring",
+      "transformArg": 2
+    },
+    {
+      "cell": "AU12",
+      "field": "ear1Main"
+    },
+    {
+      "cell": "AW9",
+      "field": "ear2Stats",
+      "transformFile": "expr/statLineText.ts",
+      "transformContext": "earring",
+      "transformArg": 0
+    },
+    {
+      "cell": "AW10",
+      "field": "ear2Stats",
+      "transformFile": "expr/statLineText.ts",
+      "transformContext": "earring",
+      "transformArg": 1
+    },
+    {
+      "cell": "AW11",
+      "field": "ear2Stats",
+      "transformFile": "expr/statLineText.ts",
+      "transformContext": "earring",
+      "transformArg": 2
+    },
+    {
+      "cell": "AW12",
+      "field": "ear2Main"
+    },
+    {
+      "cell": "AU15",
+      "field": "ring1Stats",
+      "transformFile": "expr/statLineText.ts",
+      "transformContext": "ring",
+      "transformArg": 0
+    },
+    {
+      "cell": "AU16",
+      "field": "ring1Stats",
+      "transformFile": "expr/statLineText.ts",
+      "transformContext": "ring",
+      "transformArg": 1
+    },
+    {
+      "cell": "AU17",
+      "field": "ring1Stats",
+      "transformFile": "expr/statLineText.ts",
+      "transformContext": "ring",
+      "transformArg": 2
+    },
+    {
+      "cell": "AU18",
+      "field": "ring1Main"
+    },
+    {
+      "cell": "AW15",
+      "field": "ring2Stats",
+      "transformFile": "expr/statLineText.ts",
+      "transformContext": "ring",
+      "transformArg": 0
+    },
+    {
+      "cell": "AW16",
+      "field": "ring2Stats",
+      "transformFile": "expr/statLineText.ts",
+      "transformContext": "ring",
+      "transformArg": 1
+    },
+    {
+      "cell": "AW17",
+      "field": "ring2Stats",
+      "transformFile": "expr/statLineText.ts",
+      "transformContext": "ring",
+      "transformArg": 2
+    },
+    {
+      "cell": "AW18",
+      "field": "ring2Main"
+    },
+    {
+      "cell": "AU22",
+      "field": "braceletSpec"
+    },
+    {
+      "cell": "AU23",
+      "field": "braceletSwift"
+    },
+    {
+      "cell": "AU24",
+      "field": "braceletMain"
+    },
+    {
+      "cell": "AU25",
+      "field": "braceletStats",
+      "transformFile": "expr/statLineText.ts",
+      "transformContext": "bracelet",
+      "transformArg": 0,
+      "comment": "Bracelet effect lines: statLineText.js keeps the stat-line objects present in data/stat_lines.json, renders them to text, and transformArg picks the Nth (0-based) so AU25-28 pack contiguously."
+    },
+    {
+      "cell": "AU26",
+      "field": "braceletStats",
+      "transformFile": "expr/statLineText.ts",
+      "transformContext": "bracelet",
+      "transformArg": 1
+    },
+    {
+      "cell": "AU27",
+      "field": "braceletStats",
+      "transformFile": "expr/statLineText.ts",
+      "transformContext": "bracelet",
+      "transformArg": 2
+    },
+    {
+      "cell": "AU28",
+      "field": "braceletStats",
+      "transformFile": "expr/statLineText.ts",
+      "transformContext": "bracelet",
+      "transformArg": 3
+    },
+    {
+      "cell": "BB3",
+      "field": "ap1SkillDmgGem"
+    },
+    {
+      "cell": "BC3",
+      "field": "ap1SkillCdrGem"
+    },
+    {
+      "cell": "BD3",
+      "field": "ap1Cooldown",
+      "transform": "raw === '' || raw == null ? '' : +raw / 1000"
+    },
+    {
+      "cell": "BB4",
+      "field": "ap2SkillDmgGem"
+    },
+    {
+      "cell": "BC4",
+      "field": "ap2SkillCdrGem"
+    },
+    {
+      "cell": "BD4",
+      "field": "ap2Cooldown",
+      "transform": "raw === '' || raw == null ? '' : +raw / 1000"
+    },
+    {
+      "cell": "BB5",
+      "field": "brandSkillDmgGem"
+    },
+    {
+      "cell": "BC5",
+      "field": "brandSkillCdrGem"
+    },
+    {
+      "cell": "BD5",
+      "field": "brandCooldown",
+      "transform": "raw === '' || raw == null ? '' : +raw / 1000"
+    },
+    {
+      "cell": "BB6",
+      "field": "skill6DmgGem"
+    },
+    {
+      "cell": "BC6",
+      "field": "skill6CdrGem"
+    },
+    {
+      "cell": "BD6",
+      "field": "skill6Cooldown",
+      "transform": "raw === '' || raw == null ? '' : +raw / 1000"
+    },
+    {
+      "cell": "BB7",
+      "field": "skill7DmgGem"
+    },
+    {
+      "cell": "BC7",
+      "field": "skill7CdrGem"
+    },
+    {
+      "cell": "BD7",
+      "field": "skill7Cooldown",
+      "transform": "raw === '' || raw == null ? '' : +raw / 1000"
+    },
+    {
+      "cell": "BB8",
+      "field": "skill8DmgGem"
+    },
+    {
+      "cell": "BC8",
+      "field": "skill8CdrGem"
+    },
+    {
+      "cell": "BD8",
+      "field": "skill8Cooldown",
+      "transform": "raw === '' || raw == null ? '' : +raw / 1000"
+    },
+    {
+      "cell": "BB9",
+      "field": "skill9DmgGem"
+    },
+    {
+      "cell": "BC9",
+      "field": "skill9CdrGem"
+    },
+    {
+      "cell": "BD9",
+      "field": "skill9Cooldown",
+      "transform": "raw === '' || raw == null ? '' : +raw / 1000"
+    },
+    {
+      "cell": "BB10",
+      "field": "skill10DmgGem"
+    },
+    {
+      "cell": "BC10",
+      "field": "skill10CdrGem"
+    },
+    {
+      "cell": "BD10",
+      "field": "skill10Cooldown",
+      "transform": "raw === '' || raw == null ? '' : +raw / 1000"
+    },
+    {
+      "cell": "BD11",
+      "field": "tSkillCooldown",
+      "transform": "raw === '' || raw == null ? '' : +raw / 1000"
+    },
+    {
+      "cell": "BB11",
+      "field": "identityDmgGem"
+    },
+    {
+      "cell": "BB17",
+      "field": "ap1BuffLevel"
+    },
+    {
+      "cell": "BC17",
+      "field": "apBuffUptimeProportion",
+      "format": "percent2",
+      "comment": "AP-buff uptime proportion (log, via attack-power buff categorization)."
+    },
+    {
+      "cell": "BB18",
+      "field": "ap2BuffLevel"
+    },
+    {
+      "cell": "BB21",
+      "field": "magickStreamBooks",
+      "transform": "raw === '' || raw == null ? '' : (raw === 'legendary' ? 'Legendary' : 'Relic ' + raw)",
+      "comment": "Magick Stream engraving (snapshot token): 'legendary' -> 'Legendary', else relic level -> 'Relic 5/10/15/20'."
+    },
+    {
+      "cell": "BB24",
+      "field": "awakeningBooks",
+      "transform": "raw === '' || raw == null ? '' : (raw === 'legendary' ? 'Legendary' : 'Relic ' + raw)",
+      "comment": "Awakening engraving (snapshot token): 'legendary' -> 'Legendary', else relic level -> 'Relic 5/10/15/20'."
+    },
+    {
+      "cell": "BC24",
+      "field": "awakeningRock",
+      "transform": "raw === '' || raw == null ? '' : 'Stone Lv. ' + raw",
+      "comment": "Awakening engraving (id 255) activation level (snapshot, 0-4 at [6,7,9,10] nodes) -> 'Stone Lv. N'."
+    },
+    {
+      "cell": "BB27",
+      "field": "leapCdrCommon",
+      "transform": "raw === '' || raw == null ? '' : (2 * +raw) + '%'",
+      "comment": "Common leap CDR node level (snapshot) -> '{2 * value}%', e.g. 5 -> '10%'."
+    },
+    {
+      "cell": "BB28",
+      "field": "leapCdrArtist"
+    },
+    {
+      "cell": "BJ11",
+      "field": "apBuffUptime",
+      "format": "percent2"
+    },
+    {
+      "cell": "BJ12",
+      "field": "brandUptime",
+      "format": "percent2"
+    },
+    {
+      "cell": "BJ13",
+      "field": "identityUptime",
+      "format": "percent2"
+    },
+    {
+      "cell": "BJ14",
+      "field": "hatUptime",
+      "format": "percent2"
+    },
+    {
+      "cell": "BJ15",
+      "field": "majorChordWingsUptime",
+      "format": "percent2"
+    },
+    {
+      "cell": "BJ16",
+      "field": "cheersUptime",
+      "format": "percent2"
+    },
+    {
+      "cell": "BJ17",
+      "field": "strengthOrbUptime",
+      "format": "percent2"
+    },
+    {
+      "cell": "BJ18",
+      "field": "flashOrbUptime",
+      "format": "percent2"
+    },
+    {
+      "comment": "-- Reference DPS player (character='dps') -> 'DPS players data (Serca)' tab. Filled from the user-selected DPS's snapshot (default: highest-combat-power non-support member); reuses the same snapshot fields as the support build.",
+      "cell": "C4",
+      "field": "headHoning",
+      "character": "dps",
+      "sheetTab": "DPS players data (Serca)"
+    },
+    {
+      "cell": "C5",
+      "field": "shoulderHoning",
+      "character": "dps",
+      "sheetTab": "DPS players data (Serca)"
+    },
+    {
+      "cell": "C6",
+      "field": "chestHoning",
+      "character": "dps",
+      "sheetTab": "DPS players data (Serca)"
+    },
+    {
+      "cell": "C7",
+      "field": "pantsHoning",
+      "character": "dps",
+      "sheetTab": "DPS players data (Serca)"
+    },
+    {
+      "cell": "C8",
+      "field": "gloveHoning",
+      "character": "dps",
+      "sheetTab": "DPS players data (Serca)"
+    },
+    {
+      "cell": "C9",
+      "field": "weaponHoning",
+      "character": "dps",
+      "sheetTab": "DPS players data (Serca)"
+    },
+    {
+      "cell": "C11",
+      "field": "stoneBonus",
+      "character": "dps",
+      "sheetTab": "DPS players data (Serca)",
+      "transform": "raw === '' || raw == null ? '' : (+raw >= 5 ? '9/7 and better' : 'worse than 9/7')",
+      "comment": "Same ability-stone treatment as the support's F19: sum of activated engraving levels >=5 -> '9/7 and better', else 'worse than 9/7'."
+    },
+    {
+      "comment": "H3:I11 gem block - the DPS's gemmed skills top-down (dpsGemmedSkills, gem-equip order, ap1/ap2/brand NOT excluded). Each cell shares field dpsGemmedSkills + expr/gemLevel.ts: transformArg = row (0-8), transformContext = 'dmg' (H, damage gem) or 'cdr' (I, cooldown gem). Rows beyond the DPS's gem count stay blank.",
+      "cell": "H3",
+      "field": "dpsGemmedSkills",
+      "character": "dps",
+      "sheetTab": "DPS players data (Serca)",
+      "transformFile": "expr/gemLevel.ts",
+      "transformContext": "dmg",
+      "transformArg": 0
+    },
+    {
+      "cell": "I3",
+      "field": "dpsGemmedSkills",
+      "character": "dps",
+      "sheetTab": "DPS players data (Serca)",
+      "transformFile": "expr/gemLevel.ts",
+      "transformContext": "cdr",
+      "transformArg": 0
+    },
+    {
+      "cell": "H4",
+      "field": "dpsGemmedSkills",
+      "character": "dps",
+      "sheetTab": "DPS players data (Serca)",
+      "transformFile": "expr/gemLevel.ts",
+      "transformContext": "dmg",
+      "transformArg": 1
+    },
+    {
+      "cell": "I4",
+      "field": "dpsGemmedSkills",
+      "character": "dps",
+      "sheetTab": "DPS players data (Serca)",
+      "transformFile": "expr/gemLevel.ts",
+      "transformContext": "cdr",
+      "transformArg": 1
+    },
+    {
+      "cell": "H5",
+      "field": "dpsGemmedSkills",
+      "character": "dps",
+      "sheetTab": "DPS players data (Serca)",
+      "transformFile": "expr/gemLevel.ts",
+      "transformContext": "dmg",
+      "transformArg": 2
+    },
+    {
+      "cell": "I5",
+      "field": "dpsGemmedSkills",
+      "character": "dps",
+      "sheetTab": "DPS players data (Serca)",
+      "transformFile": "expr/gemLevel.ts",
+      "transformContext": "cdr",
+      "transformArg": 2
+    },
+    {
+      "cell": "H6",
+      "field": "dpsGemmedSkills",
+      "character": "dps",
+      "sheetTab": "DPS players data (Serca)",
+      "transformFile": "expr/gemLevel.ts",
+      "transformContext": "dmg",
+      "transformArg": 3
+    },
+    {
+      "cell": "I6",
+      "field": "dpsGemmedSkills",
+      "character": "dps",
+      "sheetTab": "DPS players data (Serca)",
+      "transformFile": "expr/gemLevel.ts",
+      "transformContext": "cdr",
+      "transformArg": 3
+    },
+    {
+      "cell": "H7",
+      "field": "dpsGemmedSkills",
+      "character": "dps",
+      "sheetTab": "DPS players data (Serca)",
+      "transformFile": "expr/gemLevel.ts",
+      "transformContext": "dmg",
+      "transformArg": 4
+    },
+    {
+      "cell": "I7",
+      "field": "dpsGemmedSkills",
+      "character": "dps",
+      "sheetTab": "DPS players data (Serca)",
+      "transformFile": "expr/gemLevel.ts",
+      "transformContext": "cdr",
+      "transformArg": 4
+    },
+    {
+      "cell": "H8",
+      "field": "dpsGemmedSkills",
+      "character": "dps",
+      "sheetTab": "DPS players data (Serca)",
+      "transformFile": "expr/gemLevel.ts",
+      "transformContext": "dmg",
+      "transformArg": 5
+    },
+    {
+      "cell": "I8",
+      "field": "dpsGemmedSkills",
+      "character": "dps",
+      "sheetTab": "DPS players data (Serca)",
+      "transformFile": "expr/gemLevel.ts",
+      "transformContext": "cdr",
+      "transformArg": 5
+    },
+    {
+      "cell": "H9",
+      "field": "dpsGemmedSkills",
+      "character": "dps",
+      "sheetTab": "DPS players data (Serca)",
+      "transformFile": "expr/gemLevel.ts",
+      "transformContext": "dmg",
+      "transformArg": 6
+    },
+    {
+      "cell": "I9",
+      "field": "dpsGemmedSkills",
+      "character": "dps",
+      "sheetTab": "DPS players data (Serca)",
+      "transformFile": "expr/gemLevel.ts",
+      "transformContext": "cdr",
+      "transformArg": 6
+    },
+    {
+      "cell": "H10",
+      "field": "dpsGemmedSkills",
+      "character": "dps",
+      "sheetTab": "DPS players data (Serca)",
+      "transformFile": "expr/gemLevel.ts",
+      "transformContext": "dmg",
+      "transformArg": 7
+    },
+    {
+      "cell": "I10",
+      "field": "dpsGemmedSkills",
+      "character": "dps",
+      "sheetTab": "DPS players data (Serca)",
+      "transformFile": "expr/gemLevel.ts",
+      "transformContext": "cdr",
+      "transformArg": 7
+    },
+    {
+      "cell": "H11",
+      "field": "dpsGemmedSkills",
+      "character": "dps",
+      "sheetTab": "DPS players data (Serca)",
+      "transformFile": "expr/gemLevel.ts",
+      "transformContext": "dmg",
+      "transformArg": 8
+    },
+    {
+      "cell": "I11",
+      "field": "dpsGemmedSkills",
+      "character": "dps",
+      "sheetTab": "DPS players data (Serca)",
+      "transformFile": "expr/gemLevel.ts",
+      "transformContext": "cdr",
+      "transformArg": 8
+    }
+  ]
+}

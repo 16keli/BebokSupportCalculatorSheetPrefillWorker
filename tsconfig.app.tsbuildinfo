@@ -1,0 +1,1 @@
+{"root":["./app/App.tsx","./app/api.ts","./app/main.tsx","./app/types.ts","./app/useRateLimitQuota.ts","./app/vite-env.d.ts","./app/components/PrefillCard.tsx","./app/components/QuotaIndicator.tsx","./app/components/Terminal.tsx","./vite.config.ts"],"version":"5.9.3"}
