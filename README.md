@@ -2,12 +2,16 @@
 
 A Cloudflare Worker + React SPA that scrapes a Lost Ark support character's
 data from lostark.bible (loa-logs encounters and character snapshots) and
-prefills a copy of the **Bebok Support Calculator** Google Sheet (sheet tab
-`Sup buff calc v3.81`).
+prefills a copy of the **Bebok Support Calculator** Google Sheet (primarily the
+`Sup buff calc v3.81` tab, plus a reference DPS build on the
+`DPS players data (Serca)` tab).
 
-You paste a loa-logs log URL, pick which party's support to fill for, and the
-Worker copies the template sheet and writes the resolved cell values into it.
-What goes where is entirely data-driven by the config bundle under
+You paste a loa-logs log URL and pick which party's support to fill for.
+Optionally you also pick a reference **DPS player** - independently for gear and
+for uptime (both default to the highest-combat-power non-support member) - so
+the sheet's DPS build and buff-uptime cells reflect a chosen party member.
+The Worker copies the template sheet and writes the resolved cell values into
+it. What goes where is entirely data-driven by the config bundle under
 `configs/<version>/` - no cell mapping is hardcoded in the Worker.
 
 This is a single deployable unit: Vite builds the React/TypeScript frontend
@@ -26,7 +30,8 @@ app/                React frontend (TypeScript + Vite)
   types.ts             Wire + UI-local type definitions
   styles.css           Plain CSS (dark "extraction console" theme)
   components/
-    PrefillCard.tsx       Per-party support picker + prefill trigger
+    PrefillCard.tsx       Per-party support picker, DPS gear/uptime pickers,
+                            + prefill trigger
     Terminal.tsx          Live run log panel
     QuotaIndicator.tsx     Live rate-limit quota badge (bar + countdown)
 
@@ -98,18 +103,26 @@ than a shared workspace package. If this grows, that's the first refactor.
    loa-logs log URL.
 2. The Worker fetches the log's `__data.json` from lostark.bible (via
    Puppeteer, so it inherits a real browser session and avoids the plain-fetch
-   403), unflattens it with devalue, and evaluates the **log** datasource once
-   per party - selecting each party's players and its support member.
+   403), unflattens it with devalue, and evaluates the **log** datasource per
+   party - selecting each party's players and its support member. Each party's
+   result is computed both as an `aggregate` (party-wide uptime sums) and
+   `byMember` (the same fields re-evaluated with `players` bound to one member),
+   so per-member uptime is available in phase 2 with no extra fields.
 3. Each party renders as a `PrefillCard` showing the detected support, so you
    choose which support to prefill for. Per-job state lives in a `ScrapeJob`
    Durable Object (one instance per job) so it survives until you choose.
 
 **Phase 2 - snapshot scrape + sheet write**
-4. Pick a support on a `PrefillCard`. The Worker fetches that character's
-   snapshot, evaluates the **snapshot** datasource, joins it with the
-   already-computed log fields, applies the sheet's cell mappings (and any
-   per-cell presentation transforms), copies the template Sheet, and writes
-   the resolved values into the `Sup buff calc v3.81` tab.
+4. Pick a support on a `PrefillCard` (optionally also a DPS player for gear and
+   for uptime). The Worker fetches the support's snapshot, evaluates the
+   **snapshot** datasource, and joins it with the log fields. For DPS gear it
+   fetches the selected member's snapshot too (reusing the support's fetch when
+   they're the same character) and namespaces those fields as `dps:<id>` for the
+   `character: "dps"` cells; for uptime it selects that member's `byMember`
+   result (or the party `aggregate`). It then applies the sheet's cell mappings
+   (and any per-cell presentation transforms), copies the template Sheet, and
+   writes the resolved values into the `Sup buff calc v3.81` and
+   `DPS players data (Serca)` tabs.
 
 Because each job's state lives in one Durable Object instance, concurrent
 requests against the same job are serialized - no double-write race.
@@ -221,7 +234,11 @@ A prefill config is a directory under `configs/<version>/`:
 
 - **`sheet.json`** - the cell mappings: each entry binds a sheet `cell` to a
   `field` id, with an optional `transform` for presentation (e.g. ms -> seconds,
-  uppercasing) that keeps the datasource value canonical.
+  uppercasing) that keeps the datasource value canonical. A cell may also set
+  `character: "dps"` to read the field from the selected DPS's snapshot (looked
+  up as `dps:<field>`) instead of the support's, and a per-cell `sheetTab` to
+  write to a tab other than the bundle default (used for the
+  `DPS players data (Serca)` tab).
 - **`snapshot.json` / `log.json` / `loadout.json`** - datasources. Each lists
   `fields` (joined to the sheet by id) and reusable `intermediates`. Log
   intermediates take a `scope` (`party` default, or `member` to rebind
@@ -285,5 +302,6 @@ ceiling is the thing to watch.
   so a live browser session is inherited; a plain Worker fetch gets a 403.
 - **Job state expires after 1 hour of inactivity** - each job's Durable Object
   sets a self-cleanup alarm that pushes out on every request.
-- **Writes target the `Sup buff calc v3.81` tab** of the copied template.
+- **Writes target the `Sup buff calc v3.81` tab** of the copied template (plus
+  the `DPS players data (Serca)` tab for the reference DPS build).
 - Free Cloudflare accounts have monthly Browser Run minute limits.
