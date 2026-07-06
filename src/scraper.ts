@@ -22,12 +22,16 @@ import {
 } from "./scrapeCache";
 import { stripRoot } from "./scrapeStrip";
 import SUPPORT_SPECS_LIST from "../data/support_specs.json";
+import SUPPORT_ENGRAVINGS_LIST from "../data/support_engravings.json";
+import CHAOS_ENGRAVINGS_LIST from "../data/chaos_engravings.json";
+import ENGRAVING_NAMES_MAP from "../data/engraving_names.json";
 import type {
   FieldResult,
   PartyInfo,
   PartyLogResults,
   PartyMemberInfo,
   PlayerEntity,
+  PlayerLogFingerprint,
 } from "./types";
 
 const NAV_TIMEOUT_MS = 30_000;
@@ -37,6 +41,64 @@ const NAV_TIMEOUT_MS = 30_000;
 // ref.support_specs (see configs/log/log.json's dpsPlayers), so the party-DPS
 // filter and the member-selection here can never drift apart.
 export const SUPPORT_SPECS = new Set<string>(SUPPORT_SPECS_LIST);
+
+// Engraving-name heuristics for flagging inaccurate gear snapshots, read from
+// the log's per-player engravingData (no snapshot fetch needed). A support whose
+// build shows 2+ engravings outside the expected support set - or a DPS running
+// a "chaos"/mobbing engraving - is likely logged with the wrong loadout.
+const SUPPORT_ENGRAVINGS = new Set<string>(SUPPORT_ENGRAVINGS_LIST);
+const CHAOS_ENGRAVINGS = new Set<string>(CHAOS_ENGRAVINGS_LIST);
+// Character engraving-list id -> name (data/engraving_names.json, from
+// raw_data/Ability.json). Snapshot engravings carry an id offset by +1000 from
+// the ability id, so a snapshot engraving id X resolves as MAP[X].
+const ENGRAVING_NAMES = ENGRAVING_NAMES_MAP as Record<string, string>;
+
+// Normalizes an engraving-name list to the discriminating names: drops the
+// "Unknown" slot padding and the shared "*Reduction" utility engravings (Atk.
+// Power / Defense / Move Speed Reduction) which don't distinguish builds.
+function cleanEngravings(list: unknown): string[] {
+  return (Array.isArray(list) ? list : []).filter(
+    (e: unknown): e is string =>
+      typeof e === "string" && e !== "Unknown" && !e.includes("Reduction")
+  );
+}
+
+// Ark-passive node array -> { id: level }. Handles both the log shape ({id, lv})
+// and the snapshot shape ({id, level}).
+function arkNodeMap(arr: unknown): Record<number, number> {
+  const m: Record<number, number> = {};
+  for (const n of Array.isArray(arr) ? arr : []) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const node = n as any;
+    if (node && node.id != null) m[node.id] = node.lv ?? node.level ?? 0;
+  }
+  return m;
+}
+
+// Counts nodes whose allocated level differs between two ark-passive trees
+// (keyed id -> level). Missing on either side counts as 0.
+function treeDiffs(a: Record<number, number>, b: Record<number, number>): number {
+  const ids = new Set([...Object.keys(a), ...Object.keys(b)].map(Number));
+  let d = 0;
+  for (const id of ids) if ((a[id] ?? 0) !== (b[id] ?? 0)) d++;
+  return d;
+}
+
+// Returns a warning reason when a player's logged engravings suggest their gear
+// snapshot is inaccurate, or undefined when it looks fine. `engravingData` is a
+// bare list of engraving names padded with "Unknown" for empty slots (ignored).
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function snapshotWarningFor(p: any): string | undefined {
+  const engr = cleanEngravings(p?.engravingData);
+  if (SUPPORT_SPECS.has(p?.spec ?? "")) {
+    const mismatches = engr.filter((e) => !SUPPORT_ENGRAVINGS.has(e)).length;
+    if (mismatches >= 2)
+      return "Snapshot may be inaccurate: engravings don't match a support build.";
+  } else if (engr.some((e) => CHAOS_ENGRAVINGS.has(e))) {
+    return "Chaos (mobbing) build detected — gear may not reflect a raid build.";
+  }
+  return undefined;
+}
 
 // env.MYBROWSER is typed as Fetcher (workers-types), but puppeteer.launch
 // expects BrowserWorker - both are structurally compatible at runtime.
@@ -122,6 +184,11 @@ export interface LogPhaseResult {
   // partyKey ("all" | "0" | "1" | ...) -> per-party log results (aggregate +
   // per-member), pre-evaluated in phase 1.
   logFieldResults: Record<string, PartyLogResults>;
+  // Per-player (by name) known-good log data, for phase-2 snapshot cross-check.
+  logFingerprints: Record<string, PlayerLogFingerprint>;
+  // The log's server region (e.g. "NA" / "CE"), from encounterDamageStats.misc.
+  // Used to prefill the gear-override character link. Undefined if absent.
+  region?: string;
   // Set when the log's data version matched no config variant and the latest was
   // used best-effort (see selectSourceForPayload). Surfaced to the user.
   versionWarning?: string;
@@ -168,9 +235,14 @@ export async function fetchLogPhase(
           className: p?.class ?? "",
           itemLevel: p?.gearScore ?? 0,
           combatPower: p?.combatPower ?? 0,
+          damage: p?.damageStats?.damageDealt ?? 0,
           isSupport: SUPPORT_SPECS.has(p?.spec ?? ""),
+          snapshotWarning: snapshotWarningFor(p),
         };
       });
+      // Order members by damage dealt (highest first) for display and default
+      // reference-DPS selection.
+      players.sort((a, b) => b.damage - a.damage);
       parties.push({ partyNumber: Number(num), playerNames: names, players });
     }
     parties.sort((a, b) => a.partyNumber - b.partyNumber);
@@ -186,6 +258,21 @@ export async function fetchLogPhase(
         loadoutHash: e.loadoutHash,
       });
     }
+  }
+
+  // Capture each player's known-good log data so phase 2 can cross-check the
+  // fetched snapshot against it (compareSnapshotToLog). Keyed by name; built for
+  // all players since the DPS gear member isn't chosen until phase 2.
+  const logFingerprints: Record<string, PlayerLogFingerprint> = {};
+  for (const e of allPlayers) {
+    const apd = e.arkPassiveData ?? {};
+    logFingerprints[e.name] = {
+      arkEvolution: arkNodeMap(apd.evolution),
+      arkEnlightenment: arkNodeMap(apd.enlightenment),
+      engravings: cleanEngravings(e.engravingData),
+      combatPower: e.combatPower ?? 0,
+      classId: e.classId ?? 0,
+    };
   }
 
   // Evaluate the log source for a party: once over the whole party (aggregate,
@@ -217,11 +304,23 @@ export async function fetchLogPhase(
     }
   }
 
-  return { parties, playerEntities, logFieldResults, versionWarning };
+  const region = enc?.encounterDamageStats?.misc?.region;
+  return {
+    parties,
+    playerEntities,
+    logFieldResults,
+    logFingerprints,
+    region: typeof region === "string" ? region : undefined,
+    versionWarning,
+  };
 }
 
 export interface SourcePhaseResult {
   fields: Record<string, FieldResult>;
+  // The resolved datasource root (for phase-2 snapshot cross-check against the
+  // log - see compareSnapshotToLog). Undefined only if the source resolves none.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  root?: any;
   // Set when the data version matched no config variant (see fetchLogPhase).
   versionWarning?: string;
 }
@@ -242,5 +341,134 @@ export async function fetchSourcePhase(
 ): Promise<SourcePhaseResult> {
   const payload = await fetchPayload(browserBinding, db, variants[0]!, url);
   const { source, warning: versionWarning } = selectSourceForPayload(variants, payload, dataVersion);
-  return { fields: evaluateSource(source, payload, undefined, inputs), versionWarning };
+  return {
+    fields: evaluateSource(source, payload, undefined, inputs),
+    root: resolveRoot(payload, source),
+    versionWarning,
+  };
+}
+
+// Phase 1.5 (validation): fetch a snapshot and return ONLY its resolved root,
+// skipping field evaluation. Used by the up-front snapshot<->log cross-check
+// (compareSnapshotToLog), which reads the raw root (arkPassive/engravings/
+// combatPower) and needs no advanced `inputs`. Passing `db` warms the same D1
+// cache phase 2 reads, so the later fetchSourcePhase call becomes a cache hit.
+export async function fetchSnapshotRoot(
+  browserBinding: BrowserBinding,
+  url: string,
+  variants: CompiledSource[],
+  db?: D1Database,
+  dataVersion?: string
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+): Promise<any> {
+  const payload = await fetchPayload(browserBinding, db, variants[0]!, url);
+  const { source } = selectSourceForPayload(variants, payload, dataVersion);
+  return resolveRoot(payload, source);
+}
+
+// Picks the best loadout from a character page's `loadouts` array for the target
+// role. Prefers loadouts whose battlePoint.isSupport matches `wantSupport`
+// (falling back to all when none match), then the highest combat power
+// (combatPower.score), with the most recently updated as a tiebreak.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function pickLoadout(loadouts: any[], wantSupport: boolean): any {
+  if (!Array.isArray(loadouts) || loadouts.length === 0) return undefined;
+  const roleMatch = loadouts.filter((l) => !!l?.battlePoint?.isSupport === wantSupport);
+  const candidates = roleMatch.length > 0 ? roleMatch : loadouts;
+  return candidates.reduce((best, l) => {
+    const lCp = l?.combatPower?.score ?? 0;
+    const bestCp = best?.combatPower?.score ?? 0;
+    if (lCp !== bestCp) return lCp > bestCp ? l : best;
+    return (l?.lastUpdated ?? 0) > (best?.lastUpdated ?? 0) ? l : best;
+  });
+}
+
+// Phase 2 (manual override): fetch a lostark.bible character page
+// (/character/<region>/<name>), whose payload carries an array of loadouts at
+// data[2].loadouts. Each loadout is a structural superset of a snapshot root, so
+// we pick the best one for the role, wrap it as a snapshot-shaped payload, and
+// evaluate it with the SNAPSHOT datasource - reusing every gear expr unchanged.
+// The cache is intentionally bypassed (db omitted): a character URL is mutable
+// (unlike an immutable loadoutHash snapshot URL), so caching would risk serving
+// stale gear - exactly what this override exists to avoid.
+export async function fetchCharacterGearPhase(
+  browserBinding: BrowserBinding,
+  characterUrl: string,
+  snapshotVariants: CompiledSource[],
+  loadoutVariants: CompiledSource[],
+  inputs?: Record<string, unknown>,
+  wantSupport = true
+): Promise<SourcePhaseResult> {
+  if (loadoutVariants.length === 0) throw new Error("No loadout datasource configured.");
+  const payload = await fetchPayload(browserBinding, undefined, loadoutVariants[0]!, characterUrl);
+  const loadouts = resolveRoot(payload, loadoutVariants[0]!);
+  const chosen = pickLoadout(loadouts as unknown[] as any[], wantSupport);
+  if (!chosen) throw new Error("No loadouts found for that character.");
+  // Wrap so the snapshot source's rootPath ("data[1].snapshot") resolves to the
+  // chosen loadout. data[0] is a placeholder (snapshot pages put it at data[1]).
+  const wrapped = { data: [null, { snapshot: chosen }] };
+  const { source, warning: versionWarning } = selectSourceForPayload(
+    snapshotVariants,
+    wrapped,
+    "v3"
+  );
+  return {
+    fields: evaluateSource(source, wrapped, undefined, inputs),
+    root: chosen,
+    versionWarning,
+  };
+}
+
+// Cross-validates a fetched snapshot root against a player's known-good log
+// fingerprint, returning a list of discrepancy reasons (empty = consistent).
+// Game snapshots are unreliable and can be wrong even when the log is correct
+// (e.g. a corrupted ark-passive tree yielding wrong spec/swift) - a class of
+// error the log-only heuristic (snapshotWarningFor) can't see until the snapshot
+// is pulled. Only meaningful when the in-game snapshot was used (a user-supplied
+// character-link override is authoritative and shouldn't be cross-checked).
+export function compareSnapshotToLog(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  root: any,
+  fp: PlayerLogFingerprint | undefined
+): string[] {
+  if (!root || !fp) return [];
+  const out: string[] = [];
+
+  // 1. Ark-passive: diff the whole evolution + enlightenment trees against the
+  //    log's (authoritative) allocation. This covers spec/swift (nodes 1010200/
+  //    1010400, sheet F14/F15) and the rest of the AM column in one pass - a
+  //    corrupted snapshot tree shows up as any node differing.
+  const snapEvo = arkNodeMap(root.arkPassive?.evolution);
+  const snapEnl = arkNodeMap(root.arkPassive?.enlightenment);
+  if (
+    treeDiffs(snapEvo, fp.arkEvolution) + treeDiffs(snapEnl, fp.arkEnlightenment) >
+    0
+  ) {
+    out.push("ark-passive differs");
+  }
+
+  // 2. Engravings: map snapshot engraving ids -> names (id offset +1000) and
+  //    compare the discriminating set to the log's. A material (>=2) symmetric
+  //    difference means the snapshot is a different build than the logged one.
+  const snapEngr = cleanEngravings(
+    // Snapshot engraving ids are already the character-list form (ability id +
+    // 1000), the same keying as ENGRAVING_NAMES - look up directly.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (root.engravings ?? []).map((e: any) => ENGRAVING_NAMES[String(e?.id ?? 0)])
+  );
+  const logSet = new Set(fp.engravings);
+  const snapSet = new Set(snapEngr);
+  let symDiff = 0;
+  for (const e of snapSet) if (!logSet.has(e)) symDiff++;
+  for (const e of logSet) if (!snapSet.has(e)) symDiff++;
+  if (symDiff >= 2) out.push("engravings differ");
+
+  // 3. Combat power: a coarse "is this even the right character" check (item
+  //    level proxy; both sides carry it numerically).
+  const snapCp = root.combatPower?.score ?? 0;
+  if (fp.combatPower > 0 && Math.abs(snapCp - fp.combatPower) / fp.combatPower > 0.02) {
+    out.push("combat power differs");
+  }
+
+  return out;
 }

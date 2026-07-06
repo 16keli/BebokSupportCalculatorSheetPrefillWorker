@@ -11,15 +11,22 @@ export interface PartyInfo {
   players: PartyMemberInfo[];
 }
 
-// Per-member display info (class icon/name, item level, combat power), in the
-// same order as playerNames. Mirrors src/types.ts's PartyMemberInfo.
+// Per-member display info (class icon/name, item level, combat power), sorted
+// by damage dealt (highest first). Mirrors src/types.ts's PartyMemberInfo.
 export interface PartyMemberInfo {
   name: string;
   classId: number;
   className: string;
   itemLevel: number;
   combatPower: number;
+  // Total damage dealt in the encounter (damageStats.damageDealt). Party members
+  // are sorted by this, and the default reference DPS is the highest-damage one.
+  damage: number;
   isSupport: boolean;
+  // Human-readable reason the member's in-game gear snapshot may be inaccurate
+  // (support engravings that don't match a support build, or a DPS "chaos"
+  // build), or undefined when the snapshot looks fine. Drives a gear warning.
+  snapshotWarning?: string;
 }
 
 // Per-party support preview from phase 1 (log arkPassiveData): used by the
@@ -117,7 +124,14 @@ export type StreamEvent =
       parties: PartyInfo[];
       autoSelect: boolean;
       supportInfo?: Record<string, SupportPreview>;
+      // Server region (NA/CE) for prefilling gear-override character links.
+      region?: string;
     }
+  // Phase 1.5: one per party member as its snapshot is cross-checked against the
+  // log. `warnings` lists discrepancy reasons (empty/absent = clean); `error` is
+  // set when the snapshot couldn't be fetched (validation is best-effort).
+  | { type: "snapshot-checked"; name: string; warnings?: string[]; error?: string }
+  | { type: "snapshot-check-done" }
   | { type: "prefill-done"; message: string; spreadsheetUrl: string }
   | { type: "error"; message: string };
 
@@ -135,6 +149,8 @@ export interface PrefillCardState {
   parties: PartyInfo[];
   autoSelect: boolean;
   supportInfo?: Record<string, SupportPreview>;
+  // Server region (NA/CE) for prefilling gear-override character links.
+  region?: string;
   // The bundle's advanced-input definitions, captured so the card can render
   // them and send the collected values with the party request.
   inputsDefs?: AdvancedInput[];

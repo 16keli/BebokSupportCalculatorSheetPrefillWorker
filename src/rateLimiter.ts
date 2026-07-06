@@ -1,7 +1,7 @@
 // src/rateLimiter.ts
 //
 // One Durable Object instance per client IP (addressed via idFromName("ip:<ip>")
-// in index.ts) enforcing a cap of 5 main-page scrapes per rolling 60-second
+// in index.ts) enforcing a cap of 20 main-page scrapes per rolling 60-second
 // window for that IP. Callers presenting a valid bypass token skip the check
 // entirely (see src/bypassToken.ts), so they never reach this DO.
 //
@@ -29,7 +29,7 @@ import { DurableObject } from "cloudflare:workers";
 import type { Env } from "./env";
 
 const WINDOW_MS = 60_000;
-const MAX_PER_WINDOW = 5;
+const MAX_PER_WINDOW = 20;
 // How often to push passive updates (window-draining) to connected clients
 // while at least one is attached. 1s is frequent enough to feel "live" for
 // a 60s window without generating excessive DO wake-ups.

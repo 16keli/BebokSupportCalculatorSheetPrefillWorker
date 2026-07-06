@@ -130,6 +130,7 @@ export default function App() {
                 parties: evt.parties,
                 autoSelect: evt.autoSelect,
                 supportInfo: evt.supportInfo,
+                region: evt.region,
                 inputsDefs: bundle.sheet.inputs ?? [],
               },
             ]);

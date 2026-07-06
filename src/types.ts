@@ -223,8 +223,8 @@ export interface PartyInfo {
   partyNumber: number;
   playerNames: string[];
   // Display info for each member (class icon/name, item level, combat power),
-  // in the same order as playerNames. From the log's PLAYER entities
-  // (classId/class/gearScore/combatPower) - see fetchLogPhase.
+  // sorted by damage dealt (highest first). From the log's PLAYER entities
+  // (classId/class/gearScore/combatPower/damageStats) - see fetchLogPhase.
   players: PartyMemberInfo[];
 }
 
@@ -234,9 +234,17 @@ export interface PartyMemberInfo {
   className: string;
   itemLevel: number;
   combatPower: number;
+  // Total damage dealt in the encounter (damageStats.damageDealt). Members are
+  // sorted by this descending, and it drives the default reference-DPS pick.
+  damage: number;
   // Whether the member's spec is one of SUPPORT_SPECS (see scraper.ts) -
   // selects the dps/support combat-power icon in the party-pick UI.
   isSupport: boolean;
+  // Set when the member's logged engravings suggest their in-game gear snapshot
+  // is inaccurate (a support whose engravings don't look like a support build,
+  // or a DPS on a "chaos"/mobbing build) - a human-readable reason surfaced as a
+  // warning so the user can override gear with a character link. See scraper.ts.
+  snapshotWarning?: string;
 }
 
 export interface PlayerEntity {
@@ -268,6 +276,21 @@ export interface LogPrefillPartyPayload {
   // "aggregate" for the whole-party sum (today's behavior). Defaults to the
   // same highest-combatPower non-support member.
   uptimeMember?: string;
+  // Optional lostark.bible character link (https://lostark.bible/character/
+  // <region>/<name>) overriding the SUPPORT build gear, sourced from the
+  // character's auto-picked loadout instead of the in-game snapshot. Validated
+  // against CHARACTER_URL_PATTERN (scrapeJob.ts) before any fetch.
+  supportGearLink?: string;
+  // Same, but overrides the selected DPS member's gear (the "dps"-character
+  // cells) instead of the support build.
+  dpsGearLink?: string;
+}
+
+// Phase 1.5: validate the selected party's members' snapshots against the log
+// (streams a "snapshot-checked" event per member) before the sheet is written.
+export interface LogPrefillValidatePayload {
+  jobId: string;
+  partyKey: string; // "all" | "0" | "1" | ...
 }
 
 // Per-party support preview computed in phase 1 from the log's arkPassiveData,
@@ -289,6 +312,19 @@ export interface PartyLogResults {
   byMember: Record<string, Record<string, FieldResult>>;
 }
 
+// The log's known-good data for one player, captured in phase 1 so phase 2 can
+// cross-validate the fetched snapshot against it (the log is trustworthy even
+// when the snapshot isn't - see compareSnapshotToLog). Keyed by player name.
+export interface PlayerLogFingerprint {
+  // Ark-passive node id -> level, from the log's arkPassiveData.
+  arkEvolution: Record<number, number>;
+  arkEnlightenment: Record<number, number>;
+  // Engraving names (engravingData) with "Unknown"/"*Reduction" filtered out.
+  engravings: string[];
+  combatPower: number;
+  classId: number;
+}
+
 export interface LogPrefillJobMeta {
   spreadsheetId: string;
   sheetUrl: string;
@@ -300,6 +336,8 @@ export interface LogPrefillJobMeta {
   // partyKey -> per-party log results (aggregate + per-member), pre-evaluated
   // for every party in phase 1.
   logFieldResults: Record<string, PartyLogResults>;
+  // Per-player (by name) log fingerprint for phase-2 snapshot cross-validation.
+  logFingerprints: Record<string, PlayerLogFingerprint>;
 }
 
 export type StreamEvent =
@@ -310,6 +348,13 @@ export type StreamEvent =
       parties: PartyInfo[];
       autoSelect: boolean;
       supportInfo?: Record<string, SupportPreview>;
+      // Server region (NA/CE) for prefilling gear-override character links.
+      region?: string;
     }
+  // Phase 1.5: one per party member as its snapshot is cross-checked against the
+  // log. `warnings` lists discrepancy reasons (empty/absent = clean); `error` is
+  // set when the snapshot couldn't be fetched (validation is best-effort).
+  | { type: "snapshot-checked"; name: string; warnings?: string[]; error?: string }
+  | { type: "snapshot-check-done" }
   | { type: "prefill-done"; message: string; spreadsheetUrl: string }
   | { type: "error"; message: string };

@@ -15,6 +15,7 @@ import type { Env } from "./env";
 import type {
   LogPrefillInitialPayload,
   LogPrefillPartyPayload,
+  LogPrefillValidatePayload,
   StreamEvent,
 } from "./types";
 
@@ -37,6 +38,10 @@ export default {
 
     if (request.method === "POST" && url.pathname === "/api/log-prefill-party") {
       return handleLogPrefillParty(request, env);
+    }
+
+    if (request.method === "POST" && url.pathname === "/api/log-prefill-validate") {
+      return handleValidateParty(request, env);
     }
 
     if (request.method === "POST" && url.pathname === "/api/bypass-token") {
@@ -146,6 +151,36 @@ async function handleLogPrefillParty(request: Request, env: Env): Promise<Respon
   return new Response(doResponse.body, { status: doResponse.status, headers: doResponse.headers });
 }
 
+// Phase 1.5: cross-check the selected party's snapshots against the log so
+// discrepancies surface during configuration. The heavy path (up to 8 headless
+// renders on a cold party), but the DO meters only the members it must actually
+// render - cache hits and re-validated parties cost nothing - so the per-IP
+// bucket + bypass flag are passed through for it to charge against.
+async function handleValidateParty(request: Request, env: Env): Promise<Response> {
+  let body: LogPrefillValidatePayload;
+  try {
+    body = (await request.json()) as LogPrefillValidatePayload;
+  } catch {
+    return jsonError("Invalid JSON body", 400);
+  }
+
+  if (!body.jobId) return jsonError("Missing 'jobId'.", 400);
+  if (body.partyKey === undefined || body.partyKey === null) {
+    return jsonError("Missing 'partyKey'.", 400);
+  }
+
+  const bypass = await hasValidBypass(request, env);
+  const stub = getJobStub(env, body.jobId);
+  const doResponse = await stub.fetch("https://do/", {
+    method: "POST",
+    body: JSON.stringify({
+      method: "validateParty",
+      payload: { ...body, bucket: scrapeBucket(request), bypass },
+    }),
+  });
+  return new Response(doResponse.body, { status: doResponse.status, headers: doResponse.headers });
+}
+
 function getJobStub(env: Env, jobId: string) {
   const id = env.SCRAPE_JOB.idFromName(jobId);
   return env.SCRAPE_JOB.get(id);
@@ -215,7 +250,7 @@ function formatRateLimitMessage(result: RateLimitResult, requested: number): str
   const retrySeconds = Math.ceil(result.retryAfterMs / 1000);
   return (
     `Rate limit exceeded: ${requested} request(s) made, but only ` +
-    `${result.allowedCount} of the global ${result.limit}-per-minute limit ` +
+    `${result.allowedCount} of the ${result.limit}-per-minute limit ` +
     `remain right now (${result.currentCountInWindow}/${result.limit} used in ` +
     `the last 60s). Try again in about ${retrySeconds}s.`
   );

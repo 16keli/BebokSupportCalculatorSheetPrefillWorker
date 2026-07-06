@@ -7,9 +7,18 @@
 // sum active gems' side-node opts (opt id -> level).
 //   root.arkGridCores - the equipped cores + their gems
 //   ref.astrogems     - data/astrogems.json: { [id]: { id, baseCost, ... } }
-//   ref.cores.cores   - data/cores.json:     { [id]: { id, gemSlotPoint, ... } }
+//   ref.cores.cores   - data/cores.json:     { [id]: { id, gemSlotPoint, attr,
+//                                                       coreType, ... } }
 //
-// Returns { byBase: { [core.base]: {...} }, side: { [optId]: summedLevel } }.
+// Keying: results are keyed by the core's *identity* (order/chaos x sun/moon/
+// star), derived from cores.json - NOT `core.base`, which only encodes the grid
+// SLOT the core sits in. Slots are conventionally filled in a fixed order, but
+// that's not enforced, so the slot doesn't reliably tell you what core it holds.
+// We reconstruct the same 10001..10006 key space the sheet fields expect from
+// the core's real attr (0 order / 1 chaos) and coreType (0 sun / 1 moon /
+// 2 star): key = 10001 + attr*3 + coreType.
+//
+// Returns { byBase: { [identityKey]: {...} }, side: { [optId]: summedLevel } }.
 import { snapshotExpr, type ArkGrid } from "../../_context.ts";
 
 export default snapshotExpr<void, ArkGrid>(({ root, ref }) => {
@@ -20,9 +29,10 @@ export default snapshotExpr<void, ArkGrid>(({ root, ref }) => {
   const out: ArkGrid = { byBase: {}, side: {} };
 
   (root.arkGridCores || []).forEach((core: any) => {
-    const capacity = cap[core.id]?.gemSlotPoint;
-    if (capacity == null) {
-      // Core id not in cores.json (unknown grade/variant): degrade cleanly.
+    const meta = cap[core.id];
+    if (meta?.gemSlotPoint == null || meta.attr == null || meta.coreType == null) {
+      // Core id not in cores.json (unknown grade/variant): we can't derive its
+      // identity, so fall back to the slot `base` and degrade cleanly.
       out.byBase[core.base] = {
         id: core.id,
         found: false,
@@ -32,6 +42,9 @@ export default snapshotExpr<void, ArkGrid>(({ root, ref }) => {
       };
       return;
     }
+    const capacity = meta.gemSlotPoint;
+    // Identity key from the core's real attr/coreType, independent of its slot.
+    const key = 10001 + meta.attr * 3 + meta.coreType;
 
     let remaining = capacity;
     let points = 0;
@@ -54,7 +67,7 @@ export default snapshotExpr<void, ArkGrid>(({ root, ref }) => {
         break;
       }
     }
-    out.byBase[core.base] = {
+    out.byBase[key] = {
       id: core.id,
       found: true,
       points,

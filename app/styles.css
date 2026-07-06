@@ -558,6 +558,45 @@ select {
   opacity: 0.85;
 }
 
+/* Per-member snapshot<->log validation badge (see MemberBadge). */
+.member-badge {
+  margin-left: auto;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 11px;
+  line-height: 1;
+  font-weight: 700;
+  cursor: help;
+}
+.member-badge.checking {
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+}
+.member-badge.ok {
+  color: var(--accent);
+  border: 1px solid var(--accent-dim);
+}
+.member-badge.warn {
+  color: var(--warn);
+  border: 1px solid var(--warn);
+}
+.member-badge.error {
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+  opacity: 0.7;
+}
+/* Reserves the badge slot (no border/icon) so rows don't reflow when badges
+   stream in or the selected party changes in the multi-party picker. */
+.member-badge.placeholder {
+  border: 1px solid transparent;
+  cursor: default;
+}
+
 .pick-status {
   margin-top: 14px;
   font-family: var(--mono);
@@ -621,6 +660,69 @@ select {
   margin-top: 16px;
   padding-top: 16px;
   border-top: 1px dashed var(--border);
+}
+
+/* Snapshot-accuracy warning shown above a gear source picker (amber) */
+.gear-warning {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--warn);
+  background: var(--panel-sunken);
+  border: 1px solid var(--warn);
+  border-radius: 6px;
+  padding: 8px 10px;
+  margin-bottom: 8px;
+}
+/* Format-error hint under an invalid manual gear-override link */
+.gear-error {
+  color: var(--error);
+}
+input.invalid {
+  border-color: var(--error);
+  color: var(--error);
+}
+
+/* Gear source picker: two columns (in-game snapshot dropdown / manual link)
+   toggled by a radio, one block per side (support, DPS). */
+.gear-source {
+  margin-bottom: 16px;
+}
+.gear-source-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+.gear-source-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.gear-source-col {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.gear-source-col.active {
+  border-color: var(--accent, var(--warn));
+  background: var(--panel-sunken);
+}
+.gear-source-opt {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.gear-source-col.active .gear-source-opt {
+  color: var(--text);
+}
+.gear-source-col input[type="radio"] {
+  margin: 0;
 }
 
 /* Advanced inputs + support preview inside the party-pick card */

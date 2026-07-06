@@ -17,8 +17,20 @@ function formatIlvl(n: number): string {
 // One party member's class icon (public/classes/<classId>.png) + name + item
 // level + combat power (public/icons/{dps,support}_combat_power.png, picked
 // via isSupport - see SUPPORT_SPECS in src/scraper.ts), used in both the
-// multi-party picker and the single-party summary.
-function PartyMembers({ players }: { players: PartyMemberInfo[] }) {
+// multi-party picker and the single-party summary. `validation` (when present,
+// i.e. for the selected party) adds a per-member snapshot<->log check badge.
+function PartyMembers({
+  players,
+  validation,
+  reserveBadge,
+}: {
+  players: PartyMemberInfo[];
+  validation?: Record<string, MemberValidation>;
+  // When true, always render a badge slot (a placeholder if this member has no
+  // validation state yet) so rows don't reflow as badges stream in or as the
+  // user switches between parties in the multi-party picker.
+  reserveBadge?: boolean;
+}) {
   return (
     <div className="party-members">
       {players.map((p) => (
@@ -34,10 +46,44 @@ function PartyMembers({ players }: { players: PartyMemberInfo[] }) {
             />
             {p.combatPower.toFixed(2)}
           </span>
+          {(validation?.[p.name] || reserveBadge) && <MemberBadge v={validation?.[p.name]} />}
         </div>
       ))}
     </div>
   );
+}
+
+// Small per-member snapshot-validation indicator. Neutral while checking, green
+// when the snapshot matches the log, amber (with the reasons in its tooltip)
+// when it disagrees, grey when it couldn't be validated.
+function MemberBadge({ v }: { v?: MemberValidation }) {
+  const meta: Record<MemberValidation["state"], { cls: string; icon: string; title: string }> = {
+    checking: { cls: "checking", icon: "…", title: "Checking snapshot against the log…" },
+    ok: { cls: "ok", icon: "✓", title: "Snapshot matches the log" },
+    warn: { cls: "warn", icon: "⚠", title: "Snapshot may be inaccurate" },
+    error: { cls: "error", icon: "?", title: "Couldn't validate this snapshot" },
+  };
+  // No state yet (e.g. an unselected party in the picker): render an invisible
+  // placeholder that reserves the same space so the row layout stays stable.
+  if (!v) return <span className="member-badge placeholder" aria-hidden="true" />;
+  const m = meta[v.state];
+  return (
+    <span className={`member-badge ${m.cls}`} title={m.title}>
+      {m.icon}
+    </span>
+  );
+}
+
+// Flip any members still "checking" to "error" - used when the validation
+// stream ends early (network drop or a stream-level error like a rate limit).
+function markPendingErrored(
+  v: Record<string, MemberValidation> | undefined
+): Record<string, MemberValidation> {
+  const out = { ...(v ?? {}) };
+  for (const k of Object.keys(out)) {
+    if (out[k]?.state === "checking") out[k] = { state: "error" };
+  }
+  return out;
 }
 
 function seedInputs(defs: AdvancedInput[]): Record<string, string> {
@@ -49,13 +95,26 @@ function seedInputs(defs: AdvancedInput[]): Record<string, string> {
 // Sentinel value for the uptime dropdown's whole-party option.
 const AGGREGATE = "aggregate";
 
-// The default reference DPS: the highest-combat-power non-support member (falls
-// back to the highest-CP member overall if a party is somehow all support).
-function highestCpDpsName(players: PartyMemberInfo[]): string {
+// Format of a lostark.bible character link the user can paste to override gear
+// (mirrors CHARACTER_URL_PATTERN in src/scrapeJob.ts). Region 2-4 letters, name
+// any run of non-slash chars (unicode names allowed).
+const CHARACTER_URL_PATTERN = /^https:\/\/lostark\.bible\/character\/[A-Za-z]{2,4}\/[^/\s?#]+$/;
+
+// Builds the lostark.bible link for a character to prefill the manual override.
+// Names logged anonymously contain "#" - those (and a missing region/name) can't
+// be resolved, so we return "" (which clears the field).
+function characterLink(region: string | undefined, name: string): string {
+  if (!region || !name || name.includes("#")) return "";
+  return `https://lostark.bible/character/${region}/${name}`;
+}
+
+// The default reference DPS: the highest-damage non-support member (falls back
+// to the highest-damage member overall if a party is somehow all support).
+function highestDamageDpsName(players: PartyMemberInfo[]): string {
   const dps = players.filter((p) => !p.isSupport);
   const pool = dps.length ? dps : players;
   if (pool.length === 0) return "";
-  return pool.reduce((a, b) => (b.combatPower > a.combatPower ? b : a)).name;
+  return pool.reduce((a, b) => (b.damage > a.damage ? b : a)).name;
 }
 
 const PET_LABEL: Record<string, string> = {
@@ -162,6 +221,99 @@ function SpecSwiftTable({
   );
 }
 
+// One side's gear source, laid out as two columns toggled by a radio: the left
+// column selects the in-game snapshot via a character dropdown (disabled/visual
+// for the support, which has a single member); the right column takes a manual
+// lostark.bible character link. Only the selected column is enabled.
+function GearSourcePicker({
+  title,
+  idBase,
+  mode,
+  onMode,
+  warning,
+  locked,
+  selectValue,
+  onSelect,
+  options,
+  selectDisabled,
+  link,
+  onLink,
+  linkInvalid,
+}: {
+  title: string;
+  idBase: string;
+  mode: "snapshot" | "manual";
+  onMode: (v: "snapshot" | "manual") => void;
+  warning?: string;
+  locked: boolean;
+  selectValue: string;
+  onSelect?: (v: string) => void;
+  options: string[];
+  selectDisabled?: boolean;
+  link: string;
+  onLink: (v: string) => void;
+  linkInvalid: boolean;
+}) {
+  const snapshotChosen = mode === "snapshot";
+  return (
+    <div className="gear-source">
+      <div className="gear-source-title">{title}</div>
+      {warning && <div className="gear-warning">⚠ {warning}</div>}
+      <div className="gear-source-cols">
+        <label className={`gear-source-col${snapshotChosen ? " active" : ""}`}>
+          <div className="gear-source-opt">
+            <input
+              type="radio"
+              name={idBase}
+              checked={snapshotChosen}
+              disabled={locked}
+              onChange={() => onMode("snapshot")}
+            />
+            <span>In-game snapshot</span>
+          </div>
+          <select
+            aria-label={`${title} character`}
+            value={selectValue}
+            disabled={locked || selectDisabled || !snapshotChosen}
+            onChange={(e) => onSelect?.(e.target.value)}
+          >
+            {options.map((name) => (
+              <option key={name} value={name}>
+                {name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className={`gear-source-col${!snapshotChosen ? " active" : ""}`}>
+          <div className="gear-source-opt">
+            <input
+              type="radio"
+              name={idBase}
+              checked={!snapshotChosen}
+              disabled={locked}
+              onChange={() => onMode("manual")}
+            />
+            <span>Manual override</span>
+          </div>
+          <input
+            type="url"
+            placeholder="https://lostark.bible/character/NA/Name"
+            value={link}
+            disabled={locked || snapshotChosen}
+            className={linkInvalid ? "invalid" : undefined}
+            onChange={(e) => onLink(e.target.value)}
+          />
+          {linkInvalid && (
+            <small className="advanced-help gear-error">
+              Expected https://lostark.bible/character/&lt;region&gt;/&lt;name&gt;
+            </small>
+          )}
+        </label>
+      </div>
+    </div>
+  );
+}
+
 interface PartyFormState {
   inputs: Record<string, string>;
   petTouched: boolean;
@@ -169,8 +321,28 @@ interface PartyFormState {
   // (highest-CP DPS). uptimeMember may also be the AGGREGATE sentinel.
   gearMember?: string;
   uptimeMember?: string;
+  // Which gear source each side uses: "snapshot" (the in-game snapshot, picked
+  // via the character dropdown) or "manual" (a pasted lostark.bible link).
+  // undefined = "snapshot".
+  supportGearMode?: "snapshot" | "manual";
+  dpsGearMode?: "snapshot" | "manual";
+  // Optional lostark.bible character links overriding the support / DPS gear
+  // source (used only when the corresponding mode is "manual"). Empty = not set.
+  supportGearLink?: string;
+  dpsGearLink?: string;
+  // Phase 1.5 snapshot<->log cross-check, streamed per member once this party is
+  // selected. `validationStarted` guards the one-shot fetch per party key.
+  validationStarted?: boolean;
+  validation?: Record<string, MemberValidation>;
   done: boolean;
   status: { text: string; tag: "info" | "ok" | "err" } | null;
+}
+
+// Per-member result of the up-front snapshot cross-check (see validateParty).
+// "checking" until its event arrives; "warn" carries the discrepancy reasons.
+interface MemberValidation {
+  state: "checking" | "ok" | "warn" | "error";
+  warnings?: string[];
 }
 
 export function PrefillCard({ card, onDone }: PrefillCardProps) {
@@ -217,21 +389,34 @@ export function PrefillCard({ card, onDone }: PrefillCardProps) {
 
   async function submit(partyKey: string) {
     setSubmitting(true);
-    updateParty(partyKey, { status: { text: "Fetching snapshot and writing sheet...", tag: "info" } });
+    // Clear any prior completion state so a re-run starts fresh (no stale "done"
+    // flashing until the new result arrives).
+    updateParty(partyKey, {
+      status: { text: "Fetching snapshot and writing sheet...", tag: "info" },
+      done: false,
+    });
     const st = partyState[partyKey] ?? defaultPartyState();
     const { inputs } = st;
-    const dflt = highestCpDpsName(playersForKey(partyKey));
+    const dflt = highestDamageDpsName(playersForKey(partyKey));
     const gearMember = (st.gearMember ?? dflt) || undefined;
     const uptimeMember = (st.uptimeMember ?? dflt) || undefined;
+    // Links only apply in "manual" mode; otherwise the in-game snapshot is used.
+    const supportGearLink =
+      st.supportGearMode === "manual" ? st.supportGearLink?.trim() || undefined : undefined;
+    const dpsGearLink =
+      st.dpsGearMode === "manual" ? st.dpsGearLink?.trim() || undefined : undefined;
     try {
       await streamRequest(
         "/api/log-prefill-party",
-        { jobId: card.jobId, partyKey, inputs, gearMember, uptimeMember },
+        { jobId: card.jobId, partyKey, inputs, gearMember, uptimeMember, supportGearLink, dpsGearLink },
         (evt) => {
           if (evt.type === "status") {
             updateParty(partyKey, { status: { text: evt.message, tag: "info" } });
           } else if (evt.type === "prefill-done") {
-            updateParty(partyKey, { status: { text: evt.message, tag: "ok" }, done: true });
+            updateParty(partyKey, {
+              status: { text: evt.message, tag: "ok" },
+              done: true,
+            });
             onDone(evt.spreadsheetUrl);
           } else if (evt.type === "error") {
             updateParty(partyKey, { status: { text: evt.message, tag: "err" } });
@@ -255,6 +440,49 @@ export function PrefillCard({ card, onDone }: PrefillCardProps) {
     submit("all");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Phase 1.5: cross-check the selected party's snapshots against the log so
+  // discrepancies surface during configuration. Streams one result per member;
+  // fired once per party key (guarded by validationStarted).
+  async function runValidation(partyKey: string) {
+    const seed: Record<string, MemberValidation> = {};
+    for (const m of playersForKey(partyKey)) seed[m.name] = { state: "checking" };
+    updateParty(partyKey, { validationStarted: true, validation: seed });
+    try {
+      await streamRequest(
+        "/api/log-prefill-validate",
+        { jobId: card.jobId, partyKey },
+        (evt) => {
+          if (evt.type === "snapshot-checked") {
+            const result: MemberValidation = evt.error
+              ? { state: "error" }
+              : evt.warnings && evt.warnings.length
+                ? { state: "warn", warnings: evt.warnings }
+                : { state: "ok" };
+            updateParty(partyKey, (s) => ({
+              validation: { ...s.validation, [evt.name]: result },
+            }));
+          } else if (evt.type === "error") {
+            // A stream-level error (e.g. rate limit): mark the still-pending
+            // members as unvalidated rather than leaving them spinning.
+            updateParty(partyKey, (s) => ({
+              validation: markPendingErrored(s.validation),
+            }));
+          }
+        }
+      );
+    } catch {
+      updateParty(partyKey, (s) => ({ validation: markPendingErrored(s.validation) }));
+    }
+  }
+
+  // Trigger validation once whenever a (non-null) party becomes selected.
+  useEffect(() => {
+    if (!selectedKey) return;
+    if (partyState[selectedKey]?.validationStarted) return;
+    runValidation(selectedKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedKey]);
 
   const support = selectedKey ? card.supportInfo?.[selectedKey] : undefined;
   const current = getParty(selectedKey);
@@ -289,7 +517,11 @@ export function PrefillCard({ card, onDone }: PrefillCardProps) {
     return order.map((s) => [s, bySection.get(s)!] as const);
   }, [inputsDefs]);
 
-  const locked = submitting || current.done;
+  // Locked only while a request is in flight - NOT after completion: a finished
+  // run stays fully editable so the user can act on a discrepancy warning (flip
+  // a flagged side to the manual character-link override and re-run). Phase 2 is
+  // idempotent (reuses the existing sheet, overwrites cells - see scrapeJob.ts).
+  const locked = submitting;
   const showInputs = hasInputs && selectedKey !== null;
 
   const setField = (id: string, v: string) => {
@@ -301,7 +533,7 @@ export function PrefillCard({ card, onDone }: PrefillCardProps) {
   // DPS. Gear picks whose snapshot fills the DPS gear cells; uptime picks whose
   // per-member uptime fills the uptime cells (or AGGREGATE for the whole party).
   const partyPlayers = selectedKey ? playersForKey(selectedKey) : [];
-  const defaultDps = highestCpDpsName(partyPlayers);
+  const defaultDps = highestDamageDpsName(partyPlayers);
   const gearValue = current.gearMember ?? defaultDps;
   const uptimeValue = current.uptimeMember ?? defaultDps;
   const showSelectors = selectedKey !== null && partyPlayers.length > 0;
@@ -309,6 +541,63 @@ export function PrefillCard({ card, onDone }: PrefillCardProps) {
     selectedKey && updateParty(selectedKey, { gearMember: v });
   const setUptimeMember = (v: string) =>
     selectedKey && updateParty(selectedKey, { uptimeMember: v });
+
+  // Gear source: "snapshot" (dropdown) vs "manual" (pasted link), per side.
+  const supportGearMode = current.supportGearMode ?? "snapshot";
+  const dpsGearMode = current.dpsGearMode ?? "snapshot";
+  const setSupportGearMode = (v: "snapshot" | "manual") =>
+    selectedKey && updateParty(selectedKey, { supportGearMode: v });
+  const setDpsGearMode = (v: "snapshot" | "manual") =>
+    selectedKey && updateParty(selectedKey, { dpsGearMode: v });
+
+  // Gear-override character links + their validity (block submit while invalid).
+  // Only a link for a side whose mode is "manual" gates submission.
+  const supportGearLink = current.supportGearLink ?? "";
+  const dpsGearLink = current.dpsGearLink ?? "";
+  const setSupportGearLink = (v: string) =>
+    selectedKey && updateParty(selectedKey, { supportGearLink: v });
+  const setDpsGearLink = (v: string) =>
+    selectedKey && updateParty(selectedKey, { dpsGearLink: v });
+  const linkInvalid = (v: string) => v.trim() !== "" && !CHARACTER_URL_PATTERN.test(v.trim());
+  const supportGearLinkInvalid = supportGearMode === "manual" && linkInvalid(supportGearLink);
+  const dpsGearLinkInvalid = dpsGearMode === "manual" && linkInvalid(dpsGearLink);
+  const linksInvalid = supportGearLinkInvalid || dpsGearLinkInvalid;
+
+  // The party's (single) support, shown in the disabled support gear dropdown.
+  const supportName = partyPlayers.find((p) => p.isSupport)?.name ?? "";
+
+  // Prefill each manual-override link from the currently selected gear character
+  // whenever that selection changes (including the initial default). Anonymous
+  // names (containing "#") can't be resolved, so the field is cleared instead.
+  // Keyed on the character name, so a later manual edit to the link isn't
+  // clobbered until the dropdown selection actually changes again.
+  const region = card.region;
+  useEffect(() => {
+    if (!selectedKey) return;
+    updateParty(selectedKey, { dpsGearLink: characterLink(region, gearValue) });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedKey, gearValue, region]);
+  useEffect(() => {
+    if (!selectedKey) return;
+    updateParty(selectedKey, { supportGearLink: characterLink(region, supportName) });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedKey, supportName, region]);
+
+  // Contextual snapshot-accuracy warnings for the support (drives the support
+  // build) and the selected gear member (drives the DPS gear cells). Prefer the
+  // authoritative phase-1.5 cross-check once it lands; until then fall back to
+  // the log-only heuristic (PartyMemberInfo.snapshotWarning).
+  const validation = current.validation;
+  const memberWarning = (name?: string): string | undefined => {
+    if (!name) return undefined;
+    const v = validation?.[name];
+    if (v?.state === "warn") {
+      return "Snapshot may be inaccurate — paste this character's lostark.bible link to override.";
+    }
+    return partyPlayers.find((p) => p.name === name)?.snapshotWarning;
+  };
+  const supportWarning = memberWarning(supportName);
+  const gearWarning = memberWarning(gearValue);
 
   function renderField(inp: AdvancedInput) {
     const fieldId = `inp-${card.jobId}-${inp.id}`;
@@ -380,7 +669,11 @@ export function PrefillCard({ card, onDone }: PrefillCardProps) {
                   }}
                 >
                   <div>Party {party.partyNumber + 1}</div>
-                  <PartyMembers players={party.players} />
+                  <PartyMembers
+                    players={party.players}
+                    validation={selectedKey === key ? current.validation : undefined}
+                    reserveBadge={card.parties.length > 1}
+                  />
                 </button>
               );
             })}
@@ -390,28 +683,48 @@ export function PrefillCard({ card, onDone }: PrefillCardProps) {
         card.parties.length > 0 && (
           <div className="pick-card-summary">
             <div>Party {card.parties[0]!.partyNumber + 1}</div>
-            <PartyMembers players={card.parties[0]!.players} />
+            <PartyMembers players={card.parties[0]!.players} validation={current.validation} />
           </div>
         )
       )}
 
       {showSelectors && (
         <div className="dps-selectors">
-          <div className="advanced-field">
-            <label htmlFor={`gear-${card.jobId}`}>DPS Player's Gear</label>
-            <select
-              id={`gear-${card.jobId}`}
-              value={gearValue}
-              disabled={locked}
-              onChange={(e) => setGearMember(e.target.value)}
-            >
-              {partyPlayers.map((p) => (
-                <option key={p.name} value={p.name}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-          </div>
+          {/* Gear source, per side: pick between the in-game snapshot (the
+              dropdown, left) and a manual lostark.bible character link (right),
+              toggled by a radio. Game snapshots are unreliable, so when a member
+              is flagged the manual override pulls gear from that character's
+              loadout instead. */}
+          <GearSourcePicker
+            title="Support gear"
+            idBase={`support-gear-${card.jobId}`}
+            mode={supportGearMode}
+            onMode={setSupportGearMode}
+            warning={supportWarning}
+            locked={locked}
+            // Support has a single member: the dropdown is purely visual.
+            selectDisabled
+            selectValue={supportName}
+            options={supportName ? [supportName] : []}
+            link={supportGearLink}
+            onLink={setSupportGearLink}
+            linkInvalid={supportGearLinkInvalid}
+          />
+          <GearSourcePicker
+            title="DPS gear"
+            idBase={`dps-gear-${card.jobId}`}
+            mode={dpsGearMode}
+            onMode={setDpsGearMode}
+            warning={gearWarning}
+            locked={locked}
+            selectValue={gearValue}
+            onSelect={setGearMember}
+            options={partyPlayers.map((p) => p.name)}
+            link={dpsGearLink}
+            onLink={setDpsGearLink}
+            linkInvalid={dpsGearLinkInvalid}
+          />
+
           <div className="advanced-field">
             <label htmlFor={`uptime-${card.jobId}`}>DPS Player's Uptime</label>
             <select
@@ -481,10 +794,10 @@ export function PrefillCard({ card, onDone }: PrefillCardProps) {
           <button
             type="button"
             className="run-btn"
-            disabled={locked || !selectedKey}
+            disabled={locked || !selectedKey || linksInvalid}
             onClick={() => selectedKey && submit(selectedKey)}
           >
-            {current.done ? "Done" : submitting ? "Running..." : "Go..."}
+            {submitting ? "Running..." : current.done ? "Re-run" : "Go..."}
           </button>
         </div>
       )}

@@ -29,12 +29,22 @@ import type { DataSourceKind } from "./types";
 //   v6: log entities keep a projection of `skills` (only special:true, with
 //       totalDamage/isHyperAwakening) so the uptime denominator can subtract
 //       fixed/unbuffable damage (see configs/log/expr/partyDamageDealt.ts).
-export const STRIP_VERSION = 6;
+//   v7: log entities keep `engravingData` (the per-player engraving-name list,
+//       used to flag inaccurate snapshots - see scraper.ts snapshotWarning), and
+//       the loadout root (an array of loadouts from a /character/<region>/<name>
+//       page) is pruned per-element to the snapshot gear keys + loadout-selection
+//       metadata (see stripRoot's loadout branch below).
+//   v8: snapshot root keeps `combatPower` (the phase-2 snapshot<->log cross-check
+//       compares it against the log's combatPower - see compareSnapshotToLog).
+//   v9: log keeps encounterDamageStats.misc.region (NA/CE), used to prefill the
+//       gear-override character link (https://lostark.bible/character/<region>/<name>).
+export const STRIP_VERSION = 9;
 
 // Snapshot root (the character object): top-level keys read by snapshot.json
 // and its expr files (itemBySlot/arkGrid/arkPassive/combatStats + the fields).
 const SNAPSHOT_KEEP = new Set([
   "classId",
+  "combatPower",
   "items",
   "gems",
   "skills",
@@ -53,7 +63,8 @@ const LOG_ROOT_KEEP = new Set([
 
 // Per-entity keys: the selection fields scraper.ts reads (entityType/name/
 // classId/spec/loadoutHash), the party-pick display fields (class/gearScore/
-// combatPower - see PartyMemberInfo), plus what the log fields evaluate over
+// combatPower - see PartyMemberInfo), the engraving-name list (engravingData -
+// used to flag inaccurate snapshots), plus what the log fields evaluate over
 // (damageStats.*, arkPassiveData.evolution). Everything else on an entity -
 // notably the heavy skills / skillCastLog / damageInfo - is dropped.
 const LOG_ENTITY_KEEP = new Set([
@@ -65,11 +76,24 @@ const LOG_ENTITY_KEEP = new Set([
   "combatPower",
   "spec",
   "loadoutHash",
+  "engravingData",
   "arkPassiveData",
   "damageStats",
   // Pruned further below to only special skills' {special,isHyperAwakening,
   // totalDamage} - the fixed-damage sources the uptime denominator subtracts.
   "skills",
+]);
+
+// Loadout element (one entry of a /character/<region>/<name> page's `loadouts`
+// array): each is a structural superset of a snapshot root, so it's evaluated by
+// the snapshot datasource (see scraper.ts fetchCharacterGearPhase). Keep the
+// snapshot gear keys plus the metadata pickLoadout selects on.
+const LOADOUT_ELEMENT_KEEP = new Set([
+  ...SNAPSHOT_KEEP,
+  "classification",
+  "battlePoint",
+  "lastUpdated",
+  "itemLevel",
 ]);
 
 function isPlainObject(v: unknown): v is Record<string, unknown> {
@@ -86,9 +110,16 @@ function keepKeys(obj: unknown, allow: Set<string>): void {
 
 // Prunes the resolved datasource root IN PLACE to the allowlist for its kind,
 // preserving the surrounding payload structure so resolveRoot still finds it on
-// read. Unknown/loadout kinds are left untouched (loadout is disabled by
-// default and its root is a small array).
+// read. Unknown kinds are left untouched.
 export function stripRoot(kind: DataSourceKind, root: unknown): void {
+  // Loadout root is the `loadouts` array (a character page); prune each element.
+  if (kind === "loadout") {
+    if (Array.isArray(root)) {
+      for (const l of root) keepKeys(l, LOADOUT_ELEMENT_KEEP);
+    }
+    return;
+  }
+
   if (!isPlainObject(root)) return;
 
   if (kind === "snapshot") {
@@ -124,17 +155,19 @@ export function stripRoot(kind: DataSourceKind, root: unknown): void {
     // encounterDamageStats is huge (full buff/debuff defs + descriptions). We
     // keep only misc.partyInfo (read by scraper.ts to group players into
     // parties), misc.version (the loa-logs format version, read by the
-    // datasource version check - see src/version.ts), and a per-buff projection
+    // datasource version check - see src/version.ts), misc.region (NA/CE, used
+    // to prefill the gear-override character link), and a per-buff projection
     // of `buffs` (read by the AP-buff uptime field BC17): uniqueGroup
     // categorizes a buffedBy entry by attack-power group, and skillId
     // (= source.skill.id) attributes it to the casting skill so BC17 can isolate
     // the ap1 share. Everything else - each buff's name/desc/icon and the rest
     // of source - is dropped.
     const eds = root.encounterDamageStats as
-      | { misc?: { partyInfo?: unknown; version?: unknown }; buffs?: Record<string, unknown> }
+      | { misc?: { partyInfo?: unknown; version?: unknown; region?: unknown }; buffs?: Record<string, unknown> }
       | undefined;
     const partyInfo = eds?.misc?.partyInfo;
     const version = eds?.misc?.version;
+    const region = eds?.misc?.region;
     const buffs: Record<string, { uniqueGroup: unknown; skillId: unknown }> = {};
     if (isPlainObject(eds?.buffs)) {
       for (const [id, b] of Object.entries(eds.buffs)) {
@@ -146,7 +179,7 @@ export function stripRoot(kind: DataSourceKind, root: unknown): void {
         }
       }
     }
-    root.encounterDamageStats = { misc: { partyInfo, version }, buffs };
+    root.encounterDamageStats = { misc: { partyInfo, version, region }, buffs };
     return;
   }
 }

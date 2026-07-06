@@ -12,8 +12,16 @@
 // which persists across evictions and is read-your-writes consistent.
 
 import { DurableObject } from "cloudflare:workers";
-import { fetchLogPhase, fetchSourcePhase, SUPPORT_SPECS } from "./scraper";
+import {
+  fetchLogPhase,
+  fetchSourcePhase,
+  fetchCharacterGearPhase,
+  fetchSnapshotRoot,
+  compareSnapshotToLog,
+  SUPPORT_SPECS,
+} from "./scraper";
 import { findSources, resolveCells, resolveInputs } from "./configEngine";
+import { dataJsonUrl, hasCachedPayload } from "./scrapeCache";
 import { versionFromLoadoutHash } from "./version";
 import { COMPILED_BUNDLES } from "./generated/compiledConfigs";
 import { getOrCopyTemplateSheet, setCellValues } from "./googleSheets";
@@ -22,6 +30,7 @@ import type {
   FieldResult,
   LogPrefillInitialPayload,
   LogPrefillPartyPayload,
+  LogPrefillValidatePayload,
   LogPrefillJobMeta,
   PartyInfo,
   PartyLogResults,
@@ -30,6 +39,7 @@ import type {
   StreamEvent,
   SupportPreview,
 } from "./types";
+import type { RateLimitResult } from "./rateLimiter";
 
 const JOB_ALARM_MS = 60 * 60 * 1000; // self-destruct 1 hour after last activity
 
@@ -37,9 +47,16 @@ const JOB_ALARM_MS = 60 * 60 * 1000; // self-destruct 1 hour after last activity
 // path interpolation in the snapshot/loadout scrape URLs (see logPrefillParty).
 const LOADOUT_HASH_PATTERN = /^v\d+\/[A-Za-z0-9]+$/;
 
+// A lostark.bible character link ("https://lostark.bible/character/<region>/
+// <name>") the user can paste to override gear from that character's loadout
+// instead of the in-game snapshot. Region is 2-4 letters; name is any run of
+// non-slash chars (allows unicode names). Validated before it's interpolated
+// into a scrape URL so a crafted value can't smuggle a different host/path.
+const CHARACTER_URL_PATTERN = /^https:\/\/lostark\.bible\/character\/[A-Za-z]{2,4}\/[^/\s?#]+$/;
+
 interface RpcRequestBody {
-  method: "logPrefillInitial" | "logPrefillParty";
-  payload: LogPrefillInitialPayload | LogPrefillPartyPayload;
+  method: "logPrefillInitial" | "logPrefillParty" | "validateParty";
+  payload: LogPrefillInitialPayload | LogPrefillPartyPayload | LogPrefillValidatePayload;
 }
 
 export class ScrapeJob extends DurableObject<Env> {
@@ -64,6 +81,9 @@ export class ScrapeJob extends DurableObject<Env> {
     }
     if (method === "logPrefillParty") {
       return this.logPrefillParty(payload as LogPrefillPartyPayload);
+    }
+    if (method === "validateParty") {
+      return this.validateParty(payload as LogPrefillValidatePayload);
     }
     return new Response(JSON.stringify({ error: "Unknown method" }), { status: 400 });
   }
@@ -97,12 +117,13 @@ export class ScrapeJob extends DurableObject<Env> {
         }
 
         send({ type: "status", message: "Fetching log data..." });
-        const { parties, playerEntities, logFieldResults, versionWarning } = await fetchLogPhase(
-          this.env.MYBROWSER,
-          logUrl,
-          logVariants,
-          this.env.bebok_scrape_cache
-        );
+        const { parties, playerEntities, logFieldResults, logFingerprints, region, versionWarning } =
+          await fetchLogPhase(
+            this.env.MYBROWSER,
+            logUrl,
+            logVariants,
+            this.env.bebok_scrape_cache
+          );
         if (versionWarning) send({ type: "status", message: `Warning: ${versionWarning}` });
 
         const sheetName = sheetNameFromLogUrl(logUrl);
@@ -124,6 +145,7 @@ export class ScrapeJob extends DurableObject<Env> {
           playerEntities,
           configKey,
           logFieldResults,
+          logFingerprints,
         };
         await this.ctx.storage.put("prefill-meta", meta);
 
@@ -133,7 +155,7 @@ export class ScrapeJob extends DurableObject<Env> {
         const supportInfo = buildSupportInfo(parties, playerEntities, logFieldResults);
 
         const autoSelect = parties.length <= 1;
-        send({ type: "party-pick", parties, autoSelect, supportInfo });
+        send({ type: "party-pick", parties, autoSelect, supportInfo, region });
       } catch (err) {
         send({ type: "error", message: (err as Error).message });
       } finally {
@@ -154,6 +176,15 @@ export class ScrapeJob extends DurableObject<Env> {
   // ---------------------------------------------------------------------
   private async logPrefillParty(payload: LogPrefillPartyPayload): Promise<Response> {
     const { partyKey, inputs: rawInputs, gearMember, uptimeMember } = payload;
+    // Optional gear-override character links (validated before any fetch).
+    const supportGearLink =
+      payload.supportGearLink && CHARACTER_URL_PATTERN.test(payload.supportGearLink)
+        ? payload.supportGearLink
+        : undefined;
+    const dpsGearLink =
+      payload.dpsGearLink && CHARACTER_URL_PATTERN.test(payload.dpsGearLink)
+        ? payload.dpsGearLink
+        : undefined;
 
     const meta = await this.ctx.storage.get<LogPrefillJobMeta>("prefill-meta");
     if (!meta) {
@@ -226,27 +257,58 @@ export class ScrapeJob extends DurableObject<Env> {
         // version is the loadoutHash prefix (e.g. "v3/<hash>" -> "v3").
         const bibleVersion = versionFromLoadoutHash(supportEntity.loadoutHash);
 
+        // Snapshot<->log cross-validation now happens up front (validateParty,
+        // phase 1.5), surfacing discrepancies during configuration rather than
+        // after this write - so the in-game fetches below just fill cells (and
+        // hit the cache validateParty warmed).
         const snapshotVariants = findSources(bundle, "snapshot");
+        const loadoutVariants = findSources(bundle, "loadout");
         let snapshotFields: Record<string, FieldResult> = {};
         if (snapshotVariants.length > 0) {
-          const snapshotUrl = `https://lostark.bible/character/snapshot/${supportEntity.loadoutHash}`;
-          send({ type: "status", message: `Fetching snapshot for ${supportEntity.name}...` });
-          const res = await fetchSourcePhase(
-            this.env.MYBROWSER,
-            snapshotUrl,
-            snapshotVariants,
-            this.env.bebok_scrape_cache,
-            inputs,
-            bibleVersion
-          );
-          snapshotFields = res.fields;
-          if (res.versionWarning) send({ type: "status", message: `Warning: ${res.versionWarning}` });
+          let usedSupportOverride = false;
+          if (supportGearLink) {
+            // Manual override: pull the support build from the pasted character
+            // link's best-matching loadout instead of the (possibly inaccurate)
+            // in-game snapshot. Non-fatal: on failure fall back to the snapshot.
+            send({ type: "status", message: `Fetching support gear from ${supportGearLink}...` });
+            try {
+              const res = await fetchCharacterGearPhase(
+                this.env.MYBROWSER,
+                supportGearLink,
+                snapshotVariants,
+                loadoutVariants,
+                inputs,
+                true
+              );
+              snapshotFields = res.fields;
+              usedSupportOverride = true;
+              if (res.versionWarning) send({ type: "status", message: `Warning: ${res.versionWarning}` });
+            } catch (e) {
+              send({
+                type: "status",
+                message: `Support gear link failed (${(e as Error).message}); using in-game snapshot.`,
+              });
+            }
+          }
+          if (!usedSupportOverride) {
+            const snapshotUrl = `https://lostark.bible/character/snapshot/${supportEntity.loadoutHash}`;
+            send({ type: "status", message: `Fetching snapshot for ${supportEntity.name}...` });
+            const res = await fetchSourcePhase(
+              this.env.MYBROWSER,
+              snapshotUrl,
+              snapshotVariants,
+              this.env.bebok_scrape_cache,
+              inputs,
+              bibleVersion
+            );
+            snapshotFields = res.fields;
+            if (res.versionWarning) send({ type: "status", message: `Warning: ${res.versionWarning}` });
+          }
         }
 
         // Loadout is a separate page (skins etc.). Best-effort: only when a
         // config provides a urlTemplate and has fields; failure is non-fatal so
         // a bad/unknown loadout URL never breaks the rest of the prefill.
-        const loadoutVariants = findSources(bundle, "loadout");
         const loadoutGate = loadoutVariants.find((s) => s.urlTemplate && s.fields.length > 0);
         let loadoutFields: Record<string, FieldResult> = {};
         if (loadoutGate) {
@@ -277,7 +339,32 @@ export class ScrapeJob extends DurableObject<Env> {
         const gearMemberName =
           gearMember ?? highestCpDps(partyMembersFor(meta, partyKey));
         let dpsSnapshotFields: Record<string, FieldResult> = {};
-        if (hasDpsCells && snapshotVariants.length > 0 && gearMemberName) {
+        let usedDpsOverride = false;
+        if (hasDpsCells && snapshotVariants.length > 0 && dpsGearLink) {
+          // Manual override: source the DPS gear cells from the pasted character
+          // link instead of the member's in-game snapshot. Non-fatal: on failure
+          // fall through to the member snapshot below.
+          send({ type: "status", message: `Fetching DPS gear from ${dpsGearLink}...` });
+          try {
+            const res = await fetchCharacterGearPhase(
+              this.env.MYBROWSER,
+              dpsGearLink,
+              snapshotVariants,
+              loadoutVariants,
+              inputs,
+              false
+            );
+            dpsSnapshotFields = res.fields;
+            usedDpsOverride = true;
+            if (res.versionWarning) send({ type: "status", message: `Warning: ${res.versionWarning}` });
+          } catch (e) {
+            send({
+              type: "status",
+              message: `DPS gear link failed (${(e as Error).message}); using in-game snapshot.`,
+            });
+          }
+        }
+        if (!usedDpsOverride && hasDpsCells && snapshotVariants.length > 0 && gearMemberName) {
           const gearEntity = meta.playerEntities.find((e) => e.name === gearMemberName);
           if (!gearEntity || !LOADOUT_HASH_PATTERN.test(gearEntity.loadoutHash)) {
             send({
@@ -353,6 +440,155 @@ export class ScrapeJob extends DurableObject<Env> {
     return new Response(ts.readable, {
       headers: { "Content-Type": "application/x-ndjson; charset=utf-8" },
     });
+  }
+
+  // ---------------------------------------------------------------------
+  // Phase 1.5: cross-check every member of the selected party's in-game
+  // snapshot against the log (compareSnapshotToLog) and stream one
+  // "snapshot-checked" event per member, so discrepancies surface WHILE the
+  // user is configuring - before the sheet is written. Each fetch also warms
+  // the D1 cache the phase-2 write reads, so that write hits the cache instead
+  // of re-rendering. Best-effort: a member whose snapshot can't be fetched is
+  // reported with an `error` and never blocks configuration.
+  // ---------------------------------------------------------------------
+  private async validateParty(
+    payload: LogPrefillValidatePayload & { bucket?: string; bypass?: boolean }
+  ): Promise<Response> {
+    const { partyKey, bucket, bypass } = payload;
+    const meta = await this.ctx.storage.get<LogPrefillJobMeta>("prefill-meta");
+    if (!meta) {
+      return new Response(
+        JSON.stringify({ error: "Prefill job not found or expired. Re-run the initial scrape." }),
+        { status: 404 }
+      );
+    }
+
+    const encoder = new TextEncoder();
+    const ts = new TransformStream();
+    const writer = ts.writable.getWriter();
+    const send = (obj: StreamEvent) => writer.write(encoder.encode(JSON.stringify(obj) + "\n"));
+
+    (async () => {
+      try {
+        const bundle = COMPILED_BUNDLES[meta.configKey];
+        const snapshotVariants = bundle ? findSources(bundle, "snapshot") : [];
+        // Nothing to validate if the bundle reads no snapshot data.
+        if (snapshotVariants.length === 0) {
+          send({ type: "snapshot-check-done" });
+          return;
+        }
+
+        // Dedupe: replay a previously computed result set for this party so
+        // re-selecting it (or re-opening the card) doesn't re-render its pages
+        // or consume any quota.
+        const cacheKey = `validation:${partyKey}`;
+        const cached =
+          await this.ctx.storage.get<Record<string, { warnings?: string[]; error?: string }>>(
+            cacheKey
+          );
+        if (cached) {
+          for (const [name, r] of Object.entries(cached)) {
+            send({ type: "snapshot-checked", name, warnings: r.warnings, error: r.error });
+          }
+          send({ type: "snapshot-check-done" });
+          return;
+        }
+
+        const partyNames =
+          meta.parties.length === 0 || partyKey === "all"
+            ? null
+            : new Set(
+              meta.parties.find((p) => String(p.partyNumber) === partyKey)?.playerNames ?? []
+            );
+        const partyEntities = partyNames
+          ? meta.playerEntities.filter((e) => partyNames.has(e.name))
+          : meta.playerEntities;
+
+        const fetchable = partyEntities.filter((e) => LOADOUT_HASH_PATTERN.test(e.loadoutHash));
+
+        // Rate-limit gating: charge only for members whose snapshot isn't already
+        // in the D1 cache (each miss is a real headless-browser render). Cache
+        // hits and the dedupe short-circuit above cost nothing, so a re-checked
+        // or already-warmed party consumes no quota. Skipped for valid bypass.
+        const missCount = (
+          await Promise.all(
+            fetchable.map((e) =>
+              hasCachedPayload(
+                this.env.bebok_scrape_cache,
+                dataJsonUrl(`https://lostark.bible/character/snapshot/${e.loadoutHash}`)
+              )
+            )
+          )
+        ).filter((hit) => !hit).length;
+        if (missCount > 0 && bucket && !bypass) {
+          const rl = await this.consumeRateLimit(bucket, missCount);
+          if (!rl.allowed) {
+            const retry = Math.ceil(rl.retryAfterMs / 1000);
+            send({
+              type: "error",
+              message:
+                `Rate limit exceeded validating ${missCount} snapshot(s): only ${rl.allowedCount} of ` +
+                `${rl.limit}/min remain (${rl.currentCountInWindow}/${rl.limit} used in the last 60s). ` +
+                `Try again in about ${retry}s.`,
+            });
+            return;
+          }
+        }
+
+        // Fetch sequentially: each is a full headless-browser render (unless
+        // cached), and the Browser Rendering binding limits concurrent sessions.
+        const results: Record<string, { warnings?: string[]; error?: string }> = {};
+        for (const entity of partyEntities) {
+          if (!LOADOUT_HASH_PATTERN.test(entity.loadoutHash)) {
+            const error = "no character data";
+            results[entity.name] = { error };
+            send({ type: "snapshot-checked", name: entity.name, error });
+            continue;
+          }
+          const url = `https://lostark.bible/character/snapshot/${entity.loadoutHash}`;
+          try {
+            const root = await fetchSnapshotRoot(
+              this.env.MYBROWSER,
+              url,
+              snapshotVariants,
+              this.env.bebok_scrape_cache,
+              versionFromLoadoutHash(entity.loadoutHash)
+            );
+            const warnings = compareSnapshotToLog(root, meta.logFingerprints[entity.name]);
+            results[entity.name] = { warnings };
+            send({ type: "snapshot-checked", name: entity.name, warnings });
+          } catch (e) {
+            const error = (e as Error).message;
+            results[entity.name] = { error };
+            send({ type: "snapshot-checked", name: entity.name, error });
+          }
+        }
+        await this.ctx.storage.put(cacheKey, results);
+        send({ type: "snapshot-check-done" });
+      } catch (err) {
+        send({ type: "error", message: (err as Error).message });
+      } finally {
+        writer.close();
+      }
+    })();
+
+    return new Response(ts.readable, {
+      headers: { "Content-Type": "application/x-ndjson; charset=utf-8" },
+    });
+  }
+
+  // Consume `count` slots from the caller's per-IP rate-limit bucket (the same
+  // RateLimiter DO the Worker uses for phase 1). Kept here so validateParty can
+  // meter only the members it will actually render, using cache/dedupe state
+  // that isn't visible at the Worker layer.
+  private async consumeRateLimit(bucket: string, count: number): Promise<RateLimitResult> {
+    const id = this.env.RATE_LIMITER.idFromName(bucket);
+    const stub = this.env.RATE_LIMITER.get(id);
+    const res = await stub.fetch("https://do/", {
+      method: "POST",
+      body: JSON.stringify({ method: "tryConsume", payload: { count } }),
+    });
+    return (await res.json()) as RateLimitResult;
   }
 }
 
