@@ -493,8 +493,23 @@ export async function fetchCharacterGearPhase(
     wrapped,
     "v3"
   );
+  const fields = evaluateSource(source, wrapped, undefined, inputs);
+
+  // The in-game snapshot omits avatar skins, so F18 (skinBonus) normally comes
+  // from the manual advanced input. But a character-link override carries the
+  // full loadout (items incl. skins), so for the support we can derive the
+  // authoritative skin bonus from it - overriding that input. Wrap the chosen
+  // loadout for the loadout source's rootPath ("data[2].loadouts") and evaluate
+  // skinBonusFromLoadout (rarity-weighted fraction, matching skinBonus units).
+  if (wantSupport) {
+    const loadoutWrapped = { data: [null, null, { loadouts: [chosen] }] };
+    const { source: loadoutSource } = selectSourceForPayload(loadoutVariants, loadoutWrapped, "v3");
+    const skin = evaluateSource(loadoutSource, loadoutWrapped, undefined, inputs).skinBonusFromLoadout;
+    if (skin && skin.error == null && skin.value !== "") fields.skinBonus = skin;
+  }
+
   return {
-    fields: evaluateSource(source, wrapped, undefined, inputs),
+    fields,
     root: chosen,
     versionWarning,
   };

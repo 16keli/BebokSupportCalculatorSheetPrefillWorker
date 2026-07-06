@@ -708,11 +708,16 @@ export function PrefillCard({ card, onDone }: PrefillCardProps) {
   function renderField(inp: AdvancedInput) {
     const fieldId = `inp-${card.jobId}-${inp.id}`;
     const onChange = (v: string) => setField(inp.id, v);
+    // Skin bonus is derived from the loadout when the support gear comes from a
+    // manual character-link override - the worker fills F18 from the loadout's
+    // avatar skins, so the manual slider is inert. Disable it and say so.
+    const loadoutComputed = inp.id === "skinBonus" && supportGearMode === "manual";
+    const disabled = locked || loadoutComputed;
     return (
       <div className="advanced-field" key={inp.id}>
         <label htmlFor={fieldId}>{inp.label}</label>
         {inp.type === "select" ? (
-          <select id={fieldId} value={current.inputs[inp.id] ?? ""} disabled={locked} onChange={(e) => onChange(e.target.value)}>
+          <select id={fieldId} value={current.inputs[inp.id] ?? ""} disabled={disabled} onChange={(e) => onChange(e.target.value)}>
             {inp.options?.map((o) => (
               <option key={o.value} value={o.value}>
                 {o.label}
@@ -728,12 +733,11 @@ export function PrefillCard({ card, onDone }: PrefillCardProps) {
               max={inp.max}
               step={inp.step}
               value={current.inputs[inp.id] ?? ""}
-              disabled={locked}
+              disabled={disabled}
               onChange={(e) => onChange(e.target.value)}
             />
             <span className="range-value">
-              {current.inputs[inp.id]}
-              {inp.unit ?? ""}
+              {loadoutComputed ? "auto" : `${current.inputs[inp.id]}${inp.unit ?? ""}`}
             </span>
           </div>
         ) : (
@@ -742,11 +746,15 @@ export function PrefillCard({ card, onDone }: PrefillCardProps) {
             type={inp.type === "number" ? "number" : "text"}
             value={current.inputs[inp.id] ?? ""}
             placeholder={inp.default != null ? String(inp.default) : ""}
-            disabled={locked}
+            disabled={disabled}
             onChange={(e) => onChange(e.target.value)}
           />
         )}
-        {inp.help && <small className="advanced-help">{inp.help}</small>}
+        {loadoutComputed ? (
+          <small className="advanced-help">Computed directly from the loadout's skins.</small>
+        ) : (
+          inp.help && <small className="advanced-help">{inp.help}</small>
+        )}
       </div>
     );
   }

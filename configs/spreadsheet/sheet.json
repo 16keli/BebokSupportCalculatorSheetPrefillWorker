@@ -60,7 +60,7 @@
       "step": 0.5,
       "unit": "%",
       "section": "Main stat (str/dex/int)",
-      "help": "Main-stat % from legendary avatar skins (2% per slot, up to 8%)."
+      "help": "Main stat % from skins."
     },
     {
       "id": "stronghold",
@@ -86,7 +86,7 @@
           "label": "1.0%"
         }
       ],
-      "help": "Main-stat % from stronghold research/farm."
+      "help": "Main stat % from stronghold farm."
     }
   ],
   "cells": [

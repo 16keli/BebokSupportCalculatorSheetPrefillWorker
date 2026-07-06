@@ -53,7 +53,9 @@ export interface RefTables {
   encounters?: Record<string, Record<string, string[]>>;
   core_lines?: Record<string, string>;
   stat_lines?: Record<string, any>;
-  legendary_skin_ids?: number[];
+  // Avatar skin item ids grouped by rarity (data/skins.json). legendary 2% /
+  // epic 1% / rare 0.5% main-stat each; see expr/skinBonusFromLoadout.ts.
+  skins?: { legend?: number[]; epic?: number[]; rare?: number[] };
   // Support spec names (data/support_specs.json) - used to exclude supports from
   // the party DPS aggregate (dpsPlayers). Mirrors SUPPORT_SPECS in src/scraper.ts.
   support_specs?: string[];
@@ -148,7 +150,9 @@ export interface LogIntermediates {
 }
 
 export interface LoadoutIntermediates {
-  legendarySkins: Set<number>;
+  skinLegend: Set<number>;
+  skinEpic: Set<number>;
+  skinRare: Set<number>;
   activeLoadout: any;
   [k: string]: any;
 }

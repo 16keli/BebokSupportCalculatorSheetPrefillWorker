@@ -117,8 +117,10 @@ for (const f of snapSource.fields) {
   console.log(`  ${f.id.padEnd(20)} = ${r.error ? "ERROR " + r.error : r.value}`);
 }
 
-// -- Loadout phase (auto-detected legendary-skin count; now unbound, the
-//    skin bonus is a manual advanced input -> F18) -------------------------
+// -- Loadout phase (rarity-weighted avatar-skin bonus as a fraction: legendary
+//    2% / epic 1% / rare 0.5% each across the 4 main slots. Feeds F18 only when
+//    the support gear is a manual character-link override; otherwise F18 comes
+//    from the manual advanced input.) --------------------------------------
 console.log("\n=== LOADOUT PHASE (skinBonusFromLoadout) ===");
 const loadoutResultsMirsee = evaluateSource(loadoutSource, loadHydratedSnapshot("planning/samples/mirsee_loadout.js"));
 for (const file of ["mirsee", "esthie", "edward", "sos69"]) {
