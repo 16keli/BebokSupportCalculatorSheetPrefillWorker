@@ -109,18 +109,35 @@ type BrowserBinding = any;
 // scraping (per their request), rather than looking like an anonymous browser.
 const USER_AGENT = "Calculator Fill Bot - @mir_th";
 
+// Runs `fn` with a fresh page. When `sharedBrowser` is provided the page is
+// opened on it (and only the page is closed) so callers can reuse one browser
+// across many fetches - each puppeteer.launch counts against Browser Rendering's
+// new-browser-per-minute limit, so a per-item launch loop 429s after a couple.
+// Without it, a browser is launched and closed for this single call.
 async function withPage<T>(
   browserBinding: BrowserBinding,
-  fn: (page: import("@cloudflare/puppeteer").Page) => Promise<T>
+  fn: (page: import("@cloudflare/puppeteer").Page) => Promise<T>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  sharedBrowser?: any
 ): Promise<T> {
-  const browser = await puppeteer.launch(browserBinding);
+  const browser = sharedBrowser ?? (await puppeteer.launch(browserBinding));
   try {
     const page = await browser.newPage();
     await page.setUserAgent(USER_AGENT);
-    return await fn(page);
+    try {
+      return await fn(page);
+    } finally {
+      await page.close();
+    }
   } finally {
-    await browser.close();
+    if (!sharedBrowser) await browser.close();
   }
+}
+
+// Launches a single browser the caller owns and must close (see withSharedBrowser
+// usage in scrapeJob). Exposed so a batch of fetches can share one session.
+export async function launchBrowser(browserBinding: BrowserBinding): Promise<unknown> {
+  return puppeteer.launch(browserBinding);
 }
 
 // Reconstructs the SvelteKit page payload from the __data.json envelope.
@@ -151,7 +168,11 @@ async function fetchPayload(
   browserBinding: BrowserBinding,
   db: D1Database | undefined,
   source: CompiledSource,
-  url: string
+  url: string,
+  // Optional caller-owned browser to reuse (avoids a per-call launch). Only used
+  // on a cache miss, so passing it costs nothing when the payload is cached.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  sharedBrowser?: any
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<any> {
   const dataUrl = dataJsonUrl(url);
@@ -159,13 +180,17 @@ async function fetchPayload(
   const cached = await getCachedPayload(db, dataUrl);
   if (cached) return cached;
 
-  const raw = await withPage(browserBinding, async (page) => {
-    const response = await page.goto(dataUrl, {
-      waitUntil: "networkidle0",
-      timeout: NAV_TIMEOUT_MS,
-    });
-    return (await response?.json()) as RawEnvelope | undefined;
-  });
+  const raw = await withPage(
+    browserBinding,
+    async (page) => {
+      const response = await page.goto(dataUrl, {
+        waitUntil: "networkidle0",
+        timeout: NAV_TIMEOUT_MS,
+      });
+      return (await response?.json()) as RawEnvelope | undefined;
+    },
+    sharedBrowser
+  );
 
   if (!raw || !Array.isArray(raw.nodes)) {
     throw new Error(`Unexpected __data.json shape from ${dataUrl}`);
@@ -358,10 +383,15 @@ export async function fetchSnapshotRoot(
   url: string,
   variants: CompiledSource[],
   db?: D1Database,
-  dataVersion?: string
+  dataVersion?: string,
+  // Caller-owned browser to reuse across a batch of snapshots (validation loop),
+  // so each member isn't a separate puppeteer.launch that 429s on the Browser
+  // Rendering new-browser limit.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  sharedBrowser?: any
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<any> {
-  const payload = await fetchPayload(browserBinding, db, variants[0]!, url);
+  const payload = await fetchPayload(browserBinding, db, variants[0]!, url, sharedBrowser);
   const { source } = selectSourceForPayload(variants, payload, dataVersion);
   return resolveRoot(payload, source);
 }

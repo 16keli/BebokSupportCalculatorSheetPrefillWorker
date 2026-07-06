@@ -17,6 +17,7 @@ import {
   fetchSourcePhase,
   fetchCharacterGearPhase,
   fetchSnapshotRoot,
+  launchBrowser,
   compareSnapshotToLog,
   SUPPORT_SPECS,
 } from "./scraper";
@@ -542,37 +543,50 @@ export class ScrapeJob extends DurableObject<Env> {
             `fetchable=${fetchable.length} missCount=${missCount} variants=${snapshotVariants.length}`
         );
         const results: Record<string, { warnings?: string[]; error?: string }> = {};
-        for (const entity of partyEntities) {
-          if (!LOADOUT_HASH_PATTERN.test(entity.loadoutHash)) {
-            const error = "no character data";
-            results[entity.name] = { error };
-            send({ type: "snapshot-checked", name: entity.name, error });
-            continue;
+        // Reuse ONE browser for every member's snapshot. Each puppeteer.launch
+        // counts against Browser Rendering's new-browser-per-minute limit, so a
+        // launch-per-member loop 429s after a couple; one shared session renders
+        // all of them. Launched lazily (only if there's a cache miss to render)
+        // and always closed afterwards.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        let sharedBrowser: any;
+        try {
+          if (missCount > 0) sharedBrowser = await launchBrowser(this.env.MYBROWSER);
+          for (const entity of partyEntities) {
+            if (!LOADOUT_HASH_PATTERN.test(entity.loadoutHash)) {
+              const error = "no character data";
+              results[entity.name] = { error };
+              send({ type: "snapshot-checked", name: entity.name, error });
+              continue;
+            }
+            const url = `https://lostark.bible/character/snapshot/${entity.loadoutHash}`;
+            console.log(`[validateParty] fetching snapshot for ${entity.name} (${url})`);
+            try {
+              const root = await fetchSnapshotRoot(
+                this.env.MYBROWSER,
+                url,
+                snapshotVariants,
+                this.env.bebok_scrape_cache,
+                versionFromLoadoutHash(entity.loadoutHash),
+                sharedBrowser
+              );
+              const warnings = compareSnapshotToLog(root, meta.logFingerprints[entity.name]);
+              results[entity.name] = { warnings };
+              console.log(
+                `[validateParty] ok ${entity.name} warnings=${JSON.stringify(warnings)}`
+              );
+              send({ type: "snapshot-checked", name: entity.name, warnings });
+            } catch (e) {
+              const error = (e as Error).message;
+              console.error(
+                `[validateParty] FAILED ${entity.name}: ${error}\n${(e as Error).stack ?? ""}`
+              );
+              results[entity.name] = { error };
+              send({ type: "snapshot-checked", name: entity.name, error });
+            }
           }
-          const url = `https://lostark.bible/character/snapshot/${entity.loadoutHash}`;
-          console.log(`[validateParty] fetching snapshot for ${entity.name} (${url})`);
-          try {
-            const root = await fetchSnapshotRoot(
-              this.env.MYBROWSER,
-              url,
-              snapshotVariants,
-              this.env.bebok_scrape_cache,
-              versionFromLoadoutHash(entity.loadoutHash)
-            );
-            const warnings = compareSnapshotToLog(root, meta.logFingerprints[entity.name]);
-            results[entity.name] = { warnings };
-            console.log(
-              `[validateParty] ok ${entity.name} warnings=${JSON.stringify(warnings)}`
-            );
-            send({ type: "snapshot-checked", name: entity.name, warnings });
-          } catch (e) {
-            const error = (e as Error).message;
-            console.error(
-              `[validateParty] FAILED ${entity.name}: ${error}\n${(e as Error).stack ?? ""}`
-            );
-            results[entity.name] = { error };
-            send({ type: "snapshot-checked", name: entity.name, error });
-          }
+        } finally {
+          if (sharedBrowser) await sharedBrowser.close();
         }
         await this.ctx.storage.put(cacheKey, results);
         console.log(`[validateParty] done partyKey=${partyKey} results=${JSON.stringify(results)}`);
