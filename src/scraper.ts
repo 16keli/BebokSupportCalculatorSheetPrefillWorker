@@ -120,7 +120,7 @@ async function withPage<T>(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   sharedBrowser?: any
 ): Promise<T> {
-  const browser = sharedBrowser ?? (await puppeteer.launch(browserBinding));
+  const browser = sharedBrowser ?? (await acquireBrowser(browserBinding));
   try {
     const page = await browser.newPage();
     await page.setUserAgent(USER_AGENT);
@@ -130,14 +130,50 @@ async function withPage<T>(
       await page.close();
     }
   } finally {
-    if (!sharedBrowser) await browser.close();
+    if (!sharedBrowser) await releaseBrowser(browser);
   }
 }
 
-// Launches a single browser the caller owns and must close (see withSharedBrowser
-// usage in scrapeJob). Exposed so a batch of fetches can share one session.
-export async function launchBrowser(browserBinding: BrowserBinding): Promise<unknown> {
-  return puppeteer.launch(browserBinding);
+// How long a browser session lingers after we disconnect, so the next request
+// can reuse it instead of launching a new one. Browser Rendering caps NEW
+// browsers per minute (429 "Unable to create new browser"), and a busy session
+// (one initial log render + validation + phase-2, possibly across two logs)
+// blows through that cap. Keeping sessions warm and reconnecting stays under it.
+const BROWSER_KEEP_ALIVE_MS = 60_000;
+
+// Acquires a browser to drive: reconnects to an existing idle Browser Rendering
+// session when one is free (does NOT count against the new-browser limit), and
+// only launches a fresh one - with keep_alive so it survives for reuse - when
+// none are available. The caller MUST releaseBrowser() when done.
+export async function acquireBrowser(browserBinding: BrowserBinding): Promise<unknown> {
+  try {
+    const sessions = await puppeteer.sessions(browserBinding);
+    // A session with no connectionId has no active puppeteer connection - free
+    // to reconnect to. Try each (another request may grab one first).
+    const free = sessions.filter((s: { connectionId?: string }) => !s.connectionId);
+    for (const s of free as { sessionId: string }[]) {
+      try {
+        return await puppeteer.connect(browserBinding, s.sessionId);
+      } catch {
+        // Taken or closed between listing and connecting - try the next.
+      }
+    }
+  } catch {
+    // sessions() unsupported/failed - fall through to a fresh launch.
+  }
+  return puppeteer.launch(browserBinding, { keep_alive: BROWSER_KEEP_ALIVE_MS });
+}
+
+// Releases a browser acquired via acquireBrowser by DISCONNECTING (not closing),
+// so its session stays warm for BROWSER_KEEP_ALIVE_MS and the next request can
+// reconnect instead of launching. Best-effort - a failure here never propagates.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function releaseBrowser(browser: any): Promise<void> {
+  try {
+    await browser.disconnect();
+  } catch {
+    // Already gone; nothing to release.
+  }
 }
 
 // Reconstructs the SvelteKit page payload from the __data.json envelope.

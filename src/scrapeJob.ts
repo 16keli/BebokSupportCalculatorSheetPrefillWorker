@@ -17,7 +17,8 @@ import {
   fetchSourcePhase,
   fetchCharacterGearPhase,
   fetchSnapshotRoot,
-  launchBrowser,
+  acquireBrowser,
+  releaseBrowser,
   compareSnapshotToLog,
   SUPPORT_SPECS,
 } from "./scraper";
@@ -551,7 +552,7 @@ export class ScrapeJob extends DurableObject<Env> {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let sharedBrowser: any;
         try {
-          if (missCount > 0) sharedBrowser = await launchBrowser(this.env.MYBROWSER);
+          if (missCount > 0) sharedBrowser = await acquireBrowser(this.env.MYBROWSER);
           for (const entity of partyEntities) {
             if (!LOADOUT_HASH_PATTERN.test(entity.loadoutHash)) {
               const error = "no character data";
@@ -586,7 +587,7 @@ export class ScrapeJob extends DurableObject<Env> {
             }
           }
         } finally {
-          if (sharedBrowser) await sharedBrowser.close();
+          if (sharedBrowser) await releaseBrowser(sharedBrowser);
         }
         await this.ctx.storage.put(cacheKey, results);
         console.log(`[validateParty] done partyKey=${partyKey} results=${JSON.stringify(results)}`);
