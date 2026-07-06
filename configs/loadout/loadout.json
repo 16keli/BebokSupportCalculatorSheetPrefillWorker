@@ -12,9 +12,7 @@
     "data[1].data.loadouts",
     "data[0].loadouts"
   ],
-  "refData": [
-    "skins"
-  ],
+  "refData": ["skins"],
   "intermediates": [
     {
       "id": "skinLegend",

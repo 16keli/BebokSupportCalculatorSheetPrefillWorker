@@ -10,7 +10,11 @@ import { ScrapeJob } from "./scrapeJob";
 import { RateLimiter, type RateLimitResult } from "./rateLimiter";
 import { dataJsonUrl, hasCachedPayload } from "./scrapeCache";
 import { COMPILED_BUNDLES } from "./generated/compiledConfigs";
-import { generateBypassToken, verifyBypassToken, constantTimeEqual } from "./bypassToken";
+import {
+  generateBypassToken,
+  verifyBypassToken,
+  constantTimeEqual,
+} from "./bypassToken";
 import type { Env } from "./env";
 import type {
   LogPrefillInitialPayload,
@@ -32,15 +36,24 @@ export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
 
-    if (request.method === "POST" && url.pathname === "/api/log-prefill-initial") {
+    if (
+      request.method === "POST" &&
+      url.pathname === "/api/log-prefill-initial"
+    ) {
       return handleLogPrefillInitial(request, env);
     }
 
-    if (request.method === "POST" && url.pathname === "/api/log-prefill-party") {
+    if (
+      request.method === "POST" &&
+      url.pathname === "/api/log-prefill-party"
+    ) {
       return handleLogPrefillParty(request, env);
     }
 
-    if (request.method === "POST" && url.pathname === "/api/log-prefill-validate") {
+    if (
+      request.method === "POST" &&
+      url.pathname === "/api/log-prefill-validate"
+    ) {
       return handleValidateParty(request, env);
     }
 
@@ -56,7 +69,10 @@ export default {
   },
 } satisfies ExportedHandler<Env>;
 
-async function handleRateLimitStream(request: Request, env: Env): Promise<Response> {
+async function handleRateLimitStream(
+  request: Request,
+  env: Env,
+): Promise<Response> {
   if (request.headers.get("Upgrade") !== "websocket") {
     return jsonError("Expected a WebSocket upgrade request.", 426);
   }
@@ -69,14 +85,21 @@ async function handleRateLimitStream(request: Request, env: Env): Promise<Respon
 // Mints a bypass token. Gated on RATE_LIMIT_BYPASS_SECRET, presented as a
 // bearer token - the raw secret never leaves the operator, only short-lived
 // signed tokens do. Body may carry `{ ttlSeconds }` (clamped in bypassToken.ts).
-async function handleGenerateBypassToken(request: Request, env: Env): Promise<Response> {
+async function handleGenerateBypassToken(
+  request: Request,
+  env: Env,
+): Promise<Response> {
   const secret = env.RATE_LIMIT_BYPASS_SECRET;
   if (!secret) return jsonError("Bypass tokens are not enabled.", 501);
 
   // Throttle per IP (a bucket separate from the scrape quota) so the admin
   // secret can't be brute-forced: every attempt, success or not, consumes a
   // slot, capping guesses at the limiter's per-window rate per IP.
-  const mint = await checkRateLimit(env, `mint:${ipBucket(clientIp(request))}`, 1);
+  const mint = await checkRateLimit(
+    env,
+    `mint:${ipBucket(clientIp(request))}`,
+    1,
+  );
   if (!mint.allowed) return jsonError(formatRateLimitMessage(mint, 1), 429);
 
   const provided = bearerToken(request);
@@ -84,16 +107,25 @@ async function handleGenerateBypassToken(request: Request, env: Env): Promise<Re
     return jsonError("Unauthorized.", 401);
   }
 
-  const body = (await request.json().catch(() => ({}))) as { ttlSeconds?: unknown };
-  const ttlSeconds = typeof body.ttlSeconds === "number" ? body.ttlSeconds : undefined;
+  const body = (await request.json().catch(() => ({}))) as {
+    ttlSeconds?: unknown;
+  };
+  const ttlSeconds =
+    typeof body.ttlSeconds === "number" ? body.ttlSeconds : undefined;
 
   const { token, expiresAt } = await generateBypassToken(secret, ttlSeconds);
   return new Response(JSON.stringify({ token, expiresAt }), {
-    headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
+    headers: {
+      "Content-Type": "application/json",
+      "Cache-Control": "no-store",
+    },
   });
 }
 
-async function handleLogPrefillInitial(request: Request, env: Env): Promise<Response> {
+async function handleLogPrefillInitial(
+  request: Request,
+  env: Env,
+): Promise<Response> {
   let body: LogPrefillInitialPayload;
   try {
     body = (await request.json()) as LogPrefillInitialPayload;
@@ -103,7 +135,10 @@ async function handleLogPrefillInitial(request: Request, env: Env): Promise<Resp
 
   if (!body.logUrl) return jsonError("Missing 'logUrl'.", 400);
   if (!LOG_URL_PATTERN.test(body.logUrl.trim())) {
-    return jsonError("Invalid 'logUrl'. Expected https://lostark.bible/logs/<id>.", 400);
+    return jsonError(
+      "Invalid 'logUrl'. Expected https://lostark.bible/logs/<id>.",
+      400,
+    );
   }
   if (!body.configKey) return jsonError("Missing 'configKey'.", 400);
   if (!COMPILED_BUNDLES[body.configKey]) {
@@ -113,7 +148,10 @@ async function handleLogPrefillInitial(request: Request, env: Env): Promise<Resp
   // A cached log envelope means phase 1 won't actually scrape lostark.bible,
   // so it shouldn't consume the scrape quota. Only rate-limit on a miss - and
   // skip it entirely for callers presenting a valid bypass token.
-  const cached = await hasCachedPayload(env.bebok_scrape_cache, dataJsonUrl(body.logUrl));
+  const cached = await hasCachedPayload(
+    env.bebok_scrape_cache,
+    dataJsonUrl(body.logUrl),
+  );
   if (!cached && !(await hasValidBypass(request, env))) {
     const rateLimitResult = await checkRateLimit(env, scrapeBucket(request), 1);
     if (!rateLimitResult.allowed) {
@@ -130,7 +168,10 @@ async function handleLogPrefillInitial(request: Request, env: Env): Promise<Resp
   return prependJobIdEvent(doResponse, jobId);
 }
 
-async function handleLogPrefillParty(request: Request, env: Env): Promise<Response> {
+async function handleLogPrefillParty(
+  request: Request,
+  env: Env,
+): Promise<Response> {
   let body: LogPrefillPartyPayload;
   try {
     body = (await request.json()) as LogPrefillPartyPayload;
@@ -156,7 +197,10 @@ async function handleLogPrefillParty(request: Request, env: Env): Promise<Respon
 // renders on a cold party), but the DO meters only the members it must actually
 // render - cache hits and re-validated parties cost nothing - so the per-IP
 // bucket + bypass flag are passed through for it to charge against.
-async function handleValidateParty(request: Request, env: Env): Promise<Response> {
+async function handleValidateParty(
+  request: Request,
+  env: Env,
+): Promise<Response> {
   let body: LogPrefillValidatePayload;
   try {
     body = (await request.json()) as LogPrefillValidatePayload;
@@ -210,7 +254,12 @@ function ipBucket(ip: string): string {
   const tailGroups = tail ? tail.split(":") : [];
   const missing = Math.max(0, 8 - headGroups.length - tailGroups.length);
   const groups = [...headGroups, ...Array(missing).fill("0"), ...tailGroups];
-  return groups.slice(0, 4).map((g) => g || "0").join(":") + "::/64";
+  return (
+    groups
+      .slice(0, 4)
+      .map((g) => g || "0")
+      .join(":") + "::/64"
+  );
 }
 
 // Rate-limit bucket name for a scrape request, keyed on the (IPv6-/64-collapsed)
@@ -237,16 +286,26 @@ async function hasValidBypass(request: Request, env: Env): Promise<boolean> {
   return verifyBypassToken(secret, token);
 }
 
-async function checkRateLimit(env: Env, bucketName: string, urlCount: number): Promise<RateLimitResult> {
+async function checkRateLimit(
+  env: Env,
+  bucketName: string,
+  urlCount: number,
+): Promise<RateLimitResult> {
   const stub = getRateLimiterStub(env, bucketName);
   const res = await stub.fetch("https://do/", {
     method: "POST",
-    body: JSON.stringify({ method: "tryConsume", payload: { count: urlCount } }),
+    body: JSON.stringify({
+      method: "tryConsume",
+      payload: { count: urlCount },
+    }),
   });
   return (await res.json()) as RateLimitResult;
 }
 
-function formatRateLimitMessage(result: RateLimitResult, requested: number): string {
+function formatRateLimitMessage(
+  result: RateLimitResult,
+  requested: number,
+): string {
   const retrySeconds = Math.ceil(result.retryAfterMs / 1000);
   return (
     `Rate limit exceeded: ${requested} request(s) made, but only ` +
@@ -271,7 +330,10 @@ function prependJobIdEvent(doResponse: Response, jobId: string): Response {
 // right after returning the (still-empty) stream head, so its snapshot renders
 // never run. Draining it here, exactly as the initial-scrape path already did,
 // keeps the DO's background work alive to completion.
-function pumpDoStream(doResponse: Response, prefixEvent?: StreamEvent): Response {
+function pumpDoStream(
+  doResponse: Response,
+  prefixEvent?: StreamEvent,
+): Response {
   if (!doResponse.ok || !doResponse.body) {
     return new Response(doResponse.body, {
       status: doResponse.status,
@@ -295,7 +357,10 @@ function pumpDoStream(doResponse: Response, prefixEvent?: StreamEvent): Response
         await writer.write(value);
       }
     } catch (err) {
-      const errEvent: StreamEvent = { type: "error", message: (err as Error).message };
+      const errEvent: StreamEvent = {
+        type: "error",
+        message: (err as Error).message,
+      };
       await writer.write(encoder.encode(JSON.stringify(errEvent) + "\n"));
     } finally {
       await writer.close();

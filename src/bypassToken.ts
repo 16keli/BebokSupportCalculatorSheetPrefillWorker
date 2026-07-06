@@ -31,7 +31,7 @@ async function hmacKey(secret: string): Promise<CryptoKey> {
     new TextEncoder().encode(secret),
     { name: "HMAC", hash: "SHA-256" },
     false,
-    ["sign", "verify"]
+    ["sign", "verify"],
   );
 }
 
@@ -43,14 +43,14 @@ export interface GeneratedToken {
 // Mints a token valid for `ttlSeconds` (clamped to [1, MAX_TTL_SECONDS]).
 export async function generateBypassToken(
   secret: string,
-  ttlSeconds: number = DEFAULT_TTL_SECONDS
+  ttlSeconds: number = DEFAULT_TTL_SECONDS,
 ): Promise<GeneratedToken> {
   const ttl = Math.min(Math.max(1, Math.floor(ttlSeconds)), MAX_TTL_SECONDS);
   const expiresAt = Date.now() + ttl * 1000;
   const msg = String(expiresAt);
   const key = await hmacKey(secret);
   const sig = new Uint8Array(
-    await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(msg))
+    await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(msg)),
   );
   return { token: `${msg}.${base64urlEncode(sig)}`, expiresAt };
 }
@@ -58,7 +58,10 @@ export async function generateBypassToken(
 // True iff `token` carries a valid signature under `secret` AND has not expired.
 // The signature is checked before the expiry so a forged token is rejected the
 // same way regardless of the (attacker-chosen) expiry it claims.
-export async function verifyBypassToken(secret: string, token: string): Promise<boolean> {
+export async function verifyBypassToken(
+  secret: string,
+  token: string,
+): Promise<boolean> {
   const dot = token.indexOf(".");
   if (dot <= 0) return false;
   const msg = token.slice(0, dot);
@@ -74,7 +77,12 @@ export async function verifyBypassToken(secret: string, token: string): Promise<
 
   const key = await hmacKey(secret);
   // crypto.subtle.verify compares the MAC in constant time.
-  const ok = await crypto.subtle.verify("HMAC", key, sig, new TextEncoder().encode(msg));
+  const ok = await crypto.subtle.verify(
+    "HMAC",
+    key,
+    sig,
+    new TextEncoder().encode(msg),
+  );
   return ok && Date.now() < expiresAt;
 }
 
@@ -82,17 +90,24 @@ export async function verifyBypassToken(secret: string, token: string): Promise<
 // HMACs both sides under an ephemeral random key and compares the fixed-length
 // digests, so neither the compare time nor the digest length leaks anything
 // about the real secret.
-export async function constantTimeEqual(a: string, b: string): Promise<boolean> {
+export async function constantTimeEqual(
+  a: string,
+  b: string,
+): Promise<boolean> {
   const enc = new TextEncoder();
   const key = await crypto.subtle.importKey(
     "raw",
     crypto.getRandomValues(new Uint8Array(32)),
     { name: "HMAC", hash: "SHA-256" },
     false,
-    ["sign"]
+    ["sign"],
   );
-  const ha = new Uint8Array(await crypto.subtle.sign("HMAC", key, enc.encode(a)));
-  const hb = new Uint8Array(await crypto.subtle.sign("HMAC", key, enc.encode(b)));
+  const ha = new Uint8Array(
+    await crypto.subtle.sign("HMAC", key, enc.encode(a)),
+  );
+  const hb = new Uint8Array(
+    await crypto.subtle.sign("HMAC", key, enc.encode(b)),
+  );
   let diff = 0;
   for (let i = 0; i < ha.length; i++) diff |= ha[i]! ^ hb[i]!;
   return diff === 0;

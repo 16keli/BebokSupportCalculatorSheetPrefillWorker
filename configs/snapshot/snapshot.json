@@ -9,7 +9,15 @@
     "data[1].data.snapshot",
     "data[0].data.snapshot"
   ],
-  "refData": ["astrogems", "cores", "ark_passive", "gems", "skills", "armor", "gem_skill_groups"],
+  "refData": [
+    "astrogems",
+    "cores",
+    "ark_passive",
+    "gems",
+    "skills",
+    "armor",
+    "gem_skill_groups"
+  ],
   "intermediates": [
     {
       "id": "itemBySlot",
@@ -380,12 +388,14 @@
     },
     {
       "id": "magickStreamBooks",
-      "exprFile": "expr/engravingBooks.ts", "params": {"engravingId":1251},
+      "exprFile": "expr/engravingBooks.ts",
+      "params": { "engravingId": 1251 },
       "comment": "BB21: Magick Stream engraving grade/level. Found in root.engravings by id 1251 (Ability.json engrave id 251 + 1000 offset used by the character engraving list). Canonical token: engrave_grade05 = full relic -> 20; engrave_grade04 = relic -> floor(progress/5)*5 (5/10/15); a relic level below 5, or any lower grade -> 'legendary'. The sheet renders 'Relic N' / 'Legendary'. '' when the engraving isn't slotted."
     },
     {
       "id": "awakeningBooks",
-      "exprFile": "expr/engravingBooks.ts", "params": {"engravingId":1255},
+      "exprFile": "expr/engravingBooks.ts",
+      "params": { "engravingId": 1255 },
       "comment": "BB24: Awakening engraving grade/level. Found in root.engravings by id 1255 (Ability.json engrave id 255 + 1000). NB: the ability-STONE engraving list uses the un-offset id 255 (see awakeningRock/stoneEngravings) - different list, different convention. Same grade/level token as magickStreamBooks (relic level <5 or sub-relic -> 'legendary')."
     },
     {
@@ -420,12 +430,14 @@
     },
     {
       "id": "ap1SkillDmgGem",
-      "exprFile": "expr/skillGem.ts", "params": {"slot":"ap1","kind":"dmg"},
+      "exprFile": "expr/skillGem.ts",
+      "params": { "slot": "ap1", "kind": "dmg" },
       "comment": "BB3: skill-damage gem level (type 5) on the class's ap1 skill; '' when no damage gem is slotted on it."
     },
     {
       "id": "ap1SkillCdrGem",
-      "exprFile": "expr/skillGem.ts", "params": {"slot":"ap1","kind":"cdr"},
+      "exprFile": "expr/skillGem.ts",
+      "params": { "slot": "ap1", "kind": "cdr" },
       "comment": "BC3: skill-cooldown gem level (type 27) on the class's ap1 skill; '' when none."
     },
     {
@@ -435,12 +447,14 @@
     },
     {
       "id": "ap2SkillDmgGem",
-      "exprFile": "expr/skillGem.ts", "params": {"slot":"ap2","kind":"dmg"},
+      "exprFile": "expr/skillGem.ts",
+      "params": { "slot": "ap2", "kind": "dmg" },
       "comment": "BB4: skill-damage gem level on the class's ap2 skill."
     },
     {
       "id": "ap2SkillCdrGem",
-      "exprFile": "expr/skillGem.ts", "params": {"slot":"ap2","kind":"cdr"},
+      "exprFile": "expr/skillGem.ts",
+      "params": { "slot": "ap2", "kind": "cdr" },
       "comment": "BC4: skill-cooldown gem level on the class's ap2 skill."
     },
     {
@@ -460,12 +474,14 @@
     },
     {
       "id": "brandSkillDmgGem",
-      "exprFile": "expr/skillGem.ts", "params": {"slot":"brand","kind":"dmg"},
+      "exprFile": "expr/skillGem.ts",
+      "params": { "slot": "brand", "kind": "dmg" },
       "comment": "BB5: skill-damage gem level on the class's brand skill."
     },
     {
       "id": "brandSkillCdrGem",
-      "exprFile": "expr/skillGem.ts", "params": {"slot":"brand","kind":"cdr"},
+      "exprFile": "expr/skillGem.ts",
+      "params": { "slot": "brand", "kind": "cdr" },
       "comment": "BC5: skill-cooldown gem level on the class's brand skill."
     },
     {

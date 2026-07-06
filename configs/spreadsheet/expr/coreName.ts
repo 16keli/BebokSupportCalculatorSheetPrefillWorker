@@ -12,8 +12,13 @@ export default transform(({ value, raw, ref }) => {
   if (raw === "" || raw == null) return value;
   const e = ref.cores?.cores?.[raw as any];
   if (!e) return value;
-  const GRADES: Record<number, string> = { 0: "Epic", 1: "Legendary", 2: "Relic", 3: "Ancient" };
+  const GRADES: Record<number, string> = {
+    0: "Epic",
+    1: "Legendary",
+    2: "Relic",
+    3: "Ancient",
+  };
   const TYPES: Record<number, string> = { 0: "Sun", 1: "Moon", 2: "Star" };
   const category = e.attr == 0 ? "Order" : "Chaos";
-  return `${category} ${(TYPES[e.coreType] ?? e.coreType)} Core: ${e.title} (${(GRADES[e.grade] ?? e.grade)})`;
+  return `${category} ${TYPES[e.coreType] ?? e.coreType} Core: ${e.title} (${GRADES[e.grade] ?? e.grade})`;
 });

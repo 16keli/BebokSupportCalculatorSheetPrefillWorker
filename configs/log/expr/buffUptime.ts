@@ -13,19 +13,21 @@
 // Bindings: $ (partyDamageDealt, dpsPlayers), sum.
 import { logExpr } from "../../_context.ts";
 
-export default logExpr<{ prefix?: number; exact?: number; ranges?: [number, number][] }>(
-  ({ $, sum }, p) => {
-    const d = $.partyDamageDealt;
-    if (!d) return "";
-    const match = (id: number) =>
-      (p.prefix != null && Math.floor(id / 100) === p.prefix) ||
-      (p.exact != null && id === p.exact) ||
-      (p.ranges?.some(([lo, hi]) => id >= lo && id <= hi) ?? false);
-    const t = sum($.dpsPlayers, (player) =>
-      Object.entries(player.damageStats.buffedBy || {})
-        .filter((kv) => match(+kv[0]))
-        .reduce((a, kv) => a + (kv[1] as number), 0)
-    );
-    return (t / d).toFixed(4);
-  }
-);
+export default logExpr<{
+  prefix?: number;
+  exact?: number;
+  ranges?: [number, number][];
+}>(({ $, sum }, p) => {
+  const d = $.partyDamageDealt;
+  if (!d) return "";
+  const match = (id: number) =>
+    (p.prefix != null && Math.floor(id / 100) === p.prefix) ||
+    (p.exact != null && id === p.exact) ||
+    (p.ranges?.some(([lo, hi]) => id >= lo && id <= hi) ?? false);
+  const t = sum($.dpsPlayers, (player) =>
+    Object.entries(player.damageStats.buffedBy || {})
+      .filter((kv) => match(+kv[0]))
+      .reduce((a, kv) => a + (kv[1] as number), 0),
+  );
+  return (t / d).toFixed(4);
+});

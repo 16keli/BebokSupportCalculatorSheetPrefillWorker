@@ -40,7 +40,9 @@ const DEFAULT_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 // Maps a lostark.bible page URL to the SvelteKit data endpoint we actually
 // fetch and key the cache on. Mirrors the URL the scraper navigates to.
 export function dataJsonUrl(pageUrl: string): string {
-  return pageUrl.replace(/\/$/, "") + "/__data.json?x-sveltekit-invalidated=011";
+  return (
+    pageUrl.replace(/\/$/, "") + "/__data.json?x-sveltekit-invalidated=011"
+  );
 }
 
 // Create-table-once guard, per isolate. Shared promise so concurrent callers
@@ -52,7 +54,7 @@ function ensureSchema(db: D1Database): Promise<void> {
     schemaReady = db
       .prepare(
         "CREATE TABLE IF NOT EXISTS scrape_cache (" +
-          "url TEXT PRIMARY KEY, payload BLOB NOT NULL, created_at INTEGER NOT NULL)"
+          "url TEXT PRIMARY KEY, payload BLOB NOT NULL, created_at INTEGER NOT NULL)",
       )
       .run()
       .then(() => undefined)
@@ -69,12 +71,16 @@ function ensureSchema(db: D1Database): Promise<void> {
 // Returns an ArrayBuffer (D1's documented BLOB bind type) rather than a typed
 // array, which D1 doesn't guarantee to accept as a bound parameter.
 async function gzip(text: string): Promise<ArrayBuffer> {
-  const stream = new Response(text).body!.pipeThrough(new CompressionStream("gzip"));
+  const stream = new Response(text).body!.pipeThrough(
+    new CompressionStream("gzip"),
+  );
   return new Response(stream).arrayBuffer();
 }
 
 async function gunzip(bytes: Uint8Array): Promise<string> {
-  const stream = new Response(bytes).body!.pipeThrough(new DecompressionStream("gzip"));
+  const stream = new Response(bytes).body!.pipeThrough(
+    new DecompressionStream("gzip"),
+  );
   return new Response(stream).text();
 }
 
@@ -98,7 +104,7 @@ function toBytes(value: unknown): Uint8Array {
 // now-needed field and must be re-fetched rather than served.
 export async function getCachedPayload(
   db: D1Database | undefined,
-  dataUrl: string
+  dataUrl: string,
 ): Promise<unknown | null> {
   if (!db) return null;
   try {
@@ -111,14 +117,22 @@ export async function getCachedPayload(
 
     const expired = Date.now() - row.created_at >= DEFAULT_TTL_MS;
     if (!expired) {
-      const parsed = JSON.parse(await gunzip(toBytes(row.payload))) as CachedRecord;
+      const parsed = JSON.parse(
+        await gunzip(toBytes(row.payload)),
+      ) as CachedRecord;
       if (parsed && parsed.v === STRIP_VERSION) return parsed.p;
     }
     // Expired, stale strip-version, or legacy (no v) -> drop and miss.
-    await db.prepare("DELETE FROM scrape_cache WHERE url = ?").bind(dataUrl).run();
+    await db
+      .prepare("DELETE FROM scrape_cache WHERE url = ?")
+      .bind(dataUrl)
+      .run();
     return null;
   } catch (err) {
-    console.warn("scrapeCache.getCachedPayload failed:", (err as Error).message);
+    console.warn(
+      "scrapeCache.getCachedPayload failed:",
+      (err as Error).message,
+    );
     return null;
   }
 }
@@ -129,7 +143,7 @@ export async function getCachedPayload(
 // stale entry (which will be re-fetched) would wrongly bypass the limit.
 export async function hasCachedPayload(
   db: D1Database | undefined,
-  dataUrl: string
+  dataUrl: string,
 ): Promise<boolean> {
   return (await getCachedPayload(db, dataUrl)) !== null;
 }
@@ -141,7 +155,7 @@ export async function hasCachedPayload(
 export async function putCachedPayload(
   db: D1Database | undefined,
   dataUrl: string,
-  payload: unknown
+  payload: unknown,
 ): Promise<void> {
   if (!db) return;
   try {
@@ -150,11 +164,14 @@ export async function putCachedPayload(
     const bytes = await gzip(JSON.stringify(record));
     await db
       .prepare(
-        "INSERT OR REPLACE INTO scrape_cache (url, payload, created_at) VALUES (?, ?, ?)"
+        "INSERT OR REPLACE INTO scrape_cache (url, payload, created_at) VALUES (?, ?, ?)",
       )
       .bind(dataUrl, bytes, Date.now())
       .run();
   } catch (err) {
-    console.warn("scrapeCache.putCachedPayload failed:", (err as Error).message);
+    console.warn(
+      "scrapeCache.putCachedPayload failed:",
+      (err as Error).message,
+    );
   }
 }

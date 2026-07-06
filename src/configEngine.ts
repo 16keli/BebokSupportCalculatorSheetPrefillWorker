@@ -116,7 +116,10 @@ export function stringifyVal(v: unknown): string {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const sum = (arr: any[], fn?: (x: any) => number): number =>
-  (arr || []).reduce((s, x) => s + (fn ? Number(fn(x)) || 0 : Number(x) || 0), 0);
+  (arr || []).reduce(
+    (s, x) => s + (fn ? Number(fn(x)) || 0 : Number(x) || 0),
+    0,
+  );
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const avg = (arr: any[], fn?: (x: any) => number): number =>
   arr && arr.length ? sum(arr, fn) / arr.length : 0;
@@ -126,7 +129,11 @@ const avg = (arr: any[], fn?: (x: any) => number): number =>
 // { data: [...] } wrapper the scraper's unflatten produces.
 function nodesOf(payload: unknown): unknown {
   if (Array.isArray(payload)) return payload;
-  if (payload && typeof payload === "object" && Array.isArray((payload as { data?: unknown }).data)) {
+  if (
+    payload &&
+    typeof payload === "object" &&
+    Array.isArray((payload as { data?: unknown }).data)
+  ) {
     return (payload as { data: unknown }).data;
   }
   return payload;
@@ -153,7 +160,7 @@ export function resolveRoot(payload: unknown, src: CompiledSource): unknown {
 // numbers. Produces the map bound as `input` during evaluation.
 export function resolveInputs(
   defs: AdvancedInput[] | undefined,
-  provided: Record<string, unknown> | undefined
+  provided: Record<string, unknown> | undefined,
 ): Record<string, string | number> {
   const out: Record<string, string | number> = {};
   for (const def of defs ?? []) {
@@ -173,7 +180,7 @@ export function evaluateSource(
   src: CompiledSource,
   payload: unknown,
   selection?: Selection,
-  inputs?: Record<string, unknown>
+  inputs?: Record<string, unknown>,
 ): Record<string, FieldResult> {
   const data = nodesOf(payload);
   const root = resolveRoot(payload, src);
@@ -217,10 +224,12 @@ export function evaluateSource(
         }
         const def = defs.get(prop);
         if (!def) throw new Error(`unknown intermediate '${prop}'`);
-        if (inProgress.has(prop)) throw new Error(`cyclic intermediate '${prop}'`);
+        if (inProgress.has(prop))
+          throw new Error(`cyclic intermediate '${prop}'`);
         inProgress.add(prop);
         try {
-          const scoped = def.scope === "member" ? (member ? [member] : []) : partyPlayers;
+          const scoped =
+            def.scope === "member" ? (member ? [member] : []) : partyPlayers;
           const value = def.fn(makeCtx(scoped), def.params);
           cache.set(prop, { value });
           return value;
@@ -231,7 +240,7 @@ export function evaluateSource(
           inProgress.delete(prop);
         }
       },
-    }
+    },
   );
 
   const out: Record<string, FieldResult> = {};
@@ -267,7 +276,7 @@ function qualifyCell(cell: string, sheetTab: string | undefined): string {
 // written) and reported so callers can surface what was left blank.
 export function resolveCells(
   bundle: CompiledBundle,
-  fieldValues: Record<string, FieldResult>
+  fieldValues: Record<string, FieldResult>,
 ): ResolveResult {
   const writes: CellOverride[] = [];
   const skipped: ResolveResult["skipped"] = [];
@@ -282,7 +291,8 @@ export function resolveCells(
   const rawFieldsOf = () => {
     if (!rawFields) {
       rawFields = {};
-      for (const [id, fr] of Object.entries(fieldValues)) rawFields[id] = fr.raw;
+      for (const [id, fr] of Object.entries(fieldValues))
+        rawFields[id] = fr.raw;
     }
     return rawFields;
   };
@@ -290,14 +300,23 @@ export function resolveCells(
   for (const binding of bundle.sheet.cells) {
     // "dps" cells read the field from the DPS player's separately-evaluated
     // snapshot, merged into fieldValues under a `dps:` namespace by phase 2.
-    const lookupId = binding.character === "dps" ? `dps:${binding.field}` : binding.field;
+    const lookupId =
+      binding.character === "dps" ? `dps:${binding.field}` : binding.field;
     const r = fieldValues[lookupId];
     if (!r) {
-      skipped.push({ cell: binding.cell, field: binding.field, reason: "field not produced" });
+      skipped.push({
+        cell: binding.cell,
+        field: binding.field,
+        reason: "field not produced",
+      });
       continue;
     }
     if (r.error) {
-      skipped.push({ cell: binding.cell, field: binding.field, reason: `error: ${r.error}` });
+      skipped.push({
+        cell: binding.cell,
+        field: binding.field,
+        reason: `error: ${r.error}`,
+      });
       continue;
     }
 
@@ -327,7 +346,11 @@ export function resolveCells(
     }
 
     if (value === undefined || value === "") {
-      skipped.push({ cell: binding.cell, field: binding.field, reason: "empty" });
+      skipped.push({
+        cell: binding.cell,
+        field: binding.field,
+        reason: "empty",
+      });
       continue;
     }
     writes.push({
@@ -344,7 +367,7 @@ export function resolveCells(
 // selectSourceForPayload in src/version.ts.
 export function findSources(
   bundle: CompiledBundle,
-  kind: DataSourceKind
+  kind: DataSourceKind,
 ): CompiledSource[] {
   return bundle.sources.filter((s) => s.source === kind);
 }
@@ -354,7 +377,7 @@ export function findSources(
 // findSources + selectSourceForPayload when the data version matters.
 export function findSource(
   bundle: CompiledBundle,
-  kind: DataSourceKind
+  kind: DataSourceKind,
 ): CompiledSource | undefined {
   return bundle.sources.find((s) => s.source === kind);
 }

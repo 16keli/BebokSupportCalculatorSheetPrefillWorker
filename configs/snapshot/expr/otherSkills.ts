@@ -13,7 +13,9 @@ import { snapshotExpr, type OtherSkill, type Skill } from "../../_context.ts";
 export default snapshotExpr<void, OtherSkill[]>(({ root, $, ref }) => {
   const cs = $.classSkills;
   const used = new Set(
-    [cs.ap1 && cs.ap1.id, cs.ap2 && cs.ap2.id, cs.brand && cs.brand.id].filter((x) => x != null)
+    [cs.ap1 && cs.ap1.id, cs.ap2 && cs.ap2.id, cs.brand && cs.brand.id].filter(
+      (x) => x != null,
+    ),
   );
   const byId: Record<number, Skill> = {};
   (ref.skills || []).forEach((s) => {
@@ -61,7 +63,7 @@ export default snapshotExpr<void, OtherSkill[]>(({ root, $, ref }) => {
   // per spec it's sufficient to drop the gem's level into any available (empty)
   // damage-gem slot instead, so it still counts toward the gem-level total.
   const idCdGem = (root.gems || []).find((g: any) =>
-    (g.effects || []).some((e: any) => e.type === 35 && e.id === 15001)
+    (g.effects || []).some((e: any) => e.type === 35 && e.id === 15001),
   );
   if (idCdGem) {
     const lv = ref.gems?.[idCdGem.id]?.level;

@@ -1,76 +1,68 @@
 {
-	"$schema": "node_modules/wrangler/config-schema.json",
-	"name": "bebok-support-calculator-sheet-prefill",
-	"main": "src/index.ts",
-	"compatibility_date": "2026-04-07",
-	"compatibility_flags": [
-		"nodejs_compat"
-	],
-	"browser": {
-		"binding": "MYBROWSER"
-	},
-	"durable_objects": {
-		"bindings": [
-			{
-				"name": "SCRAPE_JOB",
-				"class_name": "ScrapeJob"
-			},
-			{
-				"name": "RATE_LIMITER",
-				"class_name": "RateLimiter"
-			}
-		]
-	},
-	// D1 cache of raw lostark.bible __data.json envelopes (see src/scrapeCache.ts).
-	// Create the database once with `wrangler d1 create bebok-scrape-cache` and
-	// paste the returned id into `database_id` below. The `scrape_cache` table is
-	// created lazily at runtime, so there is no migration step to run.
-	"d1_databases": [
-		{
-			"binding": "bebok_scrape_cache",
-			"database_name": "bebok-scrape-cache",
-			"database_id": "06937e71-5e43-4bbe-a668-f23d65eae842"
-		}
-	],
-	"migrations": [
-		{
-			"tag": "v1",
-			"new_sqlite_classes": [
-				"ScrapeJob"
-			]
-		},
-		{
-			"tag": "v2",
-			"new_sqlite_classes": [
-				"RateLimiter"
-			]
-		}
-	],
-	"assets": {
-		"directory": "./dist/client",
-		"not_found_handling": "single-page-application",
-		"run_worker_first": [
-			"/api/*"
-		]
-	},
-	"observability": {
-		"enabled": true
-	}
-	// Secrets (set these with `wrangler secret put <NAME>`, do NOT put them here):
-	//   GOOGLE_CLIENT_ID
-	//   GOOGLE_CLIENT_SECRET
-	//   GOOGLE_REFRESH_TOKEN
-	//   RATE_LIMIT_BYPASS_SECRET  (optional) - gates POST /api/bypass-token and
-	//     signs the tokens it mints; unset disables token minting/bypass.
-	//
-	// No manual resource creation needed for Durable Objects - the migrations
-	// above provision the ScrapeJob (v1) and RateLimiter (v2) classes on
-	// first deploy. RateLimiter is addressed per client IP (idFromName("ip:<ip>"))
-	// enforcing a cap of 5 main-page scrapes per rolling 60-second window per IP;
-	// a valid X-Bypass-Token skips the limit.
-	//
-	// `run_worker_first: ["/api/*"]` means requests under /api/ always hit
-	// the Worker (src/index.ts); everything else falls through to the built
-	// React app in dist/, with not_found_handling serving index.html for
-	// any unmatched client-side route.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "bebok-support-calculator-sheet-prefill",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-04-07",
+  "compatibility_flags": ["nodejs_compat"],
+  "browser": {
+    "binding": "MYBROWSER"
+  },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "SCRAPE_JOB",
+        "class_name": "ScrapeJob"
+      },
+      {
+        "name": "RATE_LIMITER",
+        "class_name": "RateLimiter"
+      }
+    ]
+  },
+  // D1 cache of raw lostark.bible __data.json envelopes (see src/scrapeCache.ts).
+  // Create the database once with `wrangler d1 create bebok-scrape-cache` and
+  // paste the returned id into `database_id` below. The `scrape_cache` table is
+  // created lazily at runtime, so there is no migration step to run.
+  "d1_databases": [
+    {
+      "binding": "bebok_scrape_cache",
+      "database_name": "bebok-scrape-cache",
+      "database_id": "06937e71-5e43-4bbe-a668-f23d65eae842"
+    }
+  ],
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["ScrapeJob"]
+    },
+    {
+      "tag": "v2",
+      "new_sqlite_classes": ["RateLimiter"]
+    }
+  ],
+  "assets": {
+    "directory": "./dist/client",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
+  "observability": {
+    "enabled": true
+  }
+  // Secrets (set these with `wrangler secret put <NAME>`, do NOT put them here):
+  //   GOOGLE_CLIENT_ID
+  //   GOOGLE_CLIENT_SECRET
+  //   GOOGLE_REFRESH_TOKEN
+  //   RATE_LIMIT_BYPASS_SECRET  (optional) - gates POST /api/bypass-token and
+  //     signs the tokens it mints; unset disables token minting/bypass.
+  //
+  // No manual resource creation needed for Durable Objects - the migrations
+  // above provision the ScrapeJob (v1) and RateLimiter (v2) classes on
+  // first deploy. RateLimiter is addressed per client IP (idFromName("ip:<ip>"))
+  // enforcing a cap of 5 main-page scrapes per rolling 60-second window per IP;
+  // a valid X-Bypass-Token skips the limit.
+  //
+  // `run_worker_first: ["/api/*"]` means requests under /api/ always hit
+  // the Worker (src/index.ts); everything else falls through to the built
+  // React app in dist/, with not_found_handling serving index.html for
+  // any unmatched client-side route.
 }

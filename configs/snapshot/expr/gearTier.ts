@@ -7,14 +7,21 @@
 import { snapshotExpr } from "../../_context.ts";
 
 const TIER_NAMES: Record<number, string> = { 1590: "Aegir", 1675: "Serca" };
-const SLOTS = ["head", "shoulder", "upper_body", "lower_body", "hand", "weapon"];
+const SLOTS = [
+  "head",
+  "shoulder",
+  "upper_body",
+  "lower_body",
+  "hand",
+  "weapon",
+];
 
 export default snapshotExpr<void, Record<string, string>>(({ $, ref }) => {
   const out: Record<string, string> = {};
   for (const slot of SLOTS) {
     const id = $.itemBySlot[slot]?.id;
     const bl = id != null ? ref.armor?.[id]?.balanceLevel : undefined;
-    out[slot] = bl != null ? TIER_NAMES[bl] ?? "" : "";
+    out[slot] = bl != null ? (TIER_NAMES[bl] ?? "") : "";
   }
   return out;
 });

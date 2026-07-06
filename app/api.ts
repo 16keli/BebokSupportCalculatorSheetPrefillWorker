@@ -12,7 +12,7 @@ export async function streamRequest(
   path: string,
   payload: unknown,
   onEvent: (event: StreamEvent) => void,
-  headers?: Record<string, string>
+  headers?: Record<string, string>,
 ): Promise<void> {
   const res = await fetch(path, {
     method: "POST",

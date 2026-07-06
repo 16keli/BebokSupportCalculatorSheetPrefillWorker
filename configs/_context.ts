@@ -49,7 +49,9 @@ export interface RefTables {
   astrogems?: Record<number, { id: number; name: string; baseCost: number }>;
   cores?: { cores: Record<number, Core> };
   armor?: Record<number, { id: number; balanceLevel: number }>;
-  ark_passive?: { enlightenment?: Record<string, { tier: number; type: string }> };
+  ark_passive?: {
+    enlightenment?: Record<string, { tier: number; type: string }>;
+  };
   encounters?: Record<string, Record<string, string[]>>;
   core_lines?: Record<string, string>;
   stat_lines?: Record<string, any>;
@@ -107,7 +109,13 @@ export interface StoneEngraving {
 export interface ArkGrid {
   byBase: Record<
     number,
-    { id: number; found: boolean; points: number | null; threshold: number | null; activeCount: number }
+    {
+      id: number;
+      found: boolean;
+      points: number | null;
+      threshold: number | null;
+      activeCount: number;
+    }
   >;
   side: Record<number, number>;
 }
@@ -138,7 +146,7 @@ export interface SnapshotIntermediates {
 
 export interface DpsPlayer {
   name?: string;
-  damageStats: { buffedBy?: Record<string, number>;[k: string]: any };
+  damageStats: { buffedBy?: Record<string, number>; [k: string]: any };
   [k: string]: any;
 }
 // The log datasource's intermediates. The named ones are read from expr
@@ -189,11 +197,14 @@ export interface TransformCtx {
 }
 
 // -- Authoring helpers (identity at runtime) --------------------------------
-export const snapshotExpr =
-  <P = void, R = unknown>(fn: (c: SnapshotCtx, p: P) => R) => fn;
-export const logExpr =
-  <P = void, R = unknown>(fn: (c: LogCtx, p: P) => R) => fn;
-export const loadoutExpr =
-  <P = void, R = unknown>(fn: (c: LoadoutCtx, p: P) => R) => fn;
-export const transform =
-  <P = void, R = unknown>(fn: (c: TransformCtx, p: P) => R) => fn;
+export const snapshotExpr = <P = void, R = unknown>(
+  fn: (c: SnapshotCtx, p: P) => R,
+) => fn;
+export const logExpr = <P = void, R = unknown>(fn: (c: LogCtx, p: P) => R) =>
+  fn;
+export const loadoutExpr = <P = void, R = unknown>(
+  fn: (c: LoadoutCtx, p: P) => R,
+) => fn;
+export const transform = <P = void, R = unknown>(
+  fn: (c: TransformCtx, p: P) => R,
+) => fn;

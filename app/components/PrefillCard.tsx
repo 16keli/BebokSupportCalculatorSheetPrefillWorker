@@ -1,7 +1,12 @@
 // app/components/PrefillCard.tsx
 import { useState, useEffect, useMemo, useRef } from "react";
 import { streamRequest, ApiError } from "../api";
-import type { AdvancedInput, PartyMemberInfo, PrefillCardState, SupportPreview } from "../types";
+import type {
+  AdvancedInput,
+  PartyMemberInfo,
+  PrefillCardState,
+  SupportPreview,
+} from "../types";
 
 interface PrefillCardProps {
   card: PrefillCardState;
@@ -11,7 +16,9 @@ interface PrefillCardProps {
 // Item level to 2 decimal places, trimming trailing zeros (e.g. 1732 -> "1732",
 // 1732.5 -> "1732.5", 1732.56 -> "1732.56").
 function formatIlvl(n: number): string {
-  return Number.isInteger(n) ? String(n) : n.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
+  return Number.isInteger(n)
+    ? String(n)
+    : n.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
 }
 
 // One party member's class icon (public/classes/<classId>.png) + name + item
@@ -39,7 +46,11 @@ function PartyMembers({
     <div className="party-members">
       {players.map((p) => (
         <div className="party-member" key={p.name}>
-          <img src={`/classes/${p.classId}.png`} alt={p.className} className="class-icon" />
+          <img
+            src={`/classes/${p.classId}.png`}
+            alt={p.className}
+            className="class-icon"
+          />
           <span className="member-name">{p.name}</span>
           <span className="member-stat">{formatIlvl(p.itemLevel)} ilvl</span>
           <span className="member-stat">
@@ -63,17 +74,39 @@ function PartyMembers({
 // when the snapshot matches the log, amber (with the reasons in its tooltip)
 // when it disagrees, grey when it couldn't be validated. A final "error" (after
 // auto-retries are exhausted) is clickable to retry manually.
-function MemberBadge({ v, onRetry }: { v?: MemberValidation; onRetry?: () => void }) {
-  const meta: Record<MemberValidation["state"], { cls: string; icon: string; title: string }> = {
-    checking: { cls: "checking", icon: "…", title: "Checking snapshot against the log…" },
-    retrying: { cls: "retrying", icon: "…", title: "Validation was busy — retrying…" },
+function MemberBadge({
+  v,
+  onRetry,
+}: {
+  v?: MemberValidation;
+  onRetry?: () => void;
+}) {
+  const meta: Record<
+    MemberValidation["state"],
+    { cls: string; icon: string; title: string }
+  > = {
+    checking: {
+      cls: "checking",
+      icon: "…",
+      title: "Checking snapshot against the log…",
+    },
+    retrying: {
+      cls: "retrying",
+      icon: "…",
+      title: "Validation was busy — retrying…",
+    },
     ok: { cls: "ok", icon: "✓", title: "Snapshot matches the log" },
     warn: { cls: "warn", icon: "⚠", title: "Snapshot may be inaccurate" },
-    error: { cls: "error", icon: "?", title: "Couldn't validate this snapshot" },
+    error: {
+      cls: "error",
+      icon: "?",
+      title: "Couldn't validate this snapshot",
+    },
   };
   // No state yet (e.g. an unselected party in the picker): render an invisible
   // placeholder that reserves the same space so the row layout stays stable.
-  if (!v) return <span className="member-badge placeholder" aria-hidden="true" />;
+  if (!v)
+    return <span className="member-badge placeholder" aria-hidden="true" />;
   const m = meta[v.state];
   // Final error with a retry handler: make it an actionable control. Uses a
   // span (not <button>) with stopPropagation so it nests validly inside the
@@ -111,7 +144,7 @@ function MemberBadge({ v, onRetry }: { v?: MemberValidation; onRetry?: () => voi
 // Flip any members still "checking" to "error" - used when the validation
 // stream ends early (network drop or a stream-level error like a rate limit).
 function markPendingErrored(
-  v: Record<string, MemberValidation> | undefined
+  v: Record<string, MemberValidation> | undefined,
 ): Record<string, MemberValidation> {
   const out = { ...(v ?? {}) };
   for (const k of Object.keys(out)) {
@@ -140,7 +173,8 @@ const VALIDATION_RETRY_DELAY_MS = 25_000;
 // Format of a lostark.bible character link the user can paste to override gear
 // (mirrors CHARACTER_URL_PATTERN in src/scrapeJob.ts). Region 2-4 letters, name
 // any run of non-slash chars (unicode names allowed).
-const CHARACTER_URL_PATTERN = /^https:\/\/lostark\.bible\/character\/[A-Za-z]{2,4}\/[^/\s?#]+$/;
+const CHARACTER_URL_PATTERN =
+  /^https:\/\/lostark\.bible\/character\/[A-Za-z]{2,4}\/[^/\s?#]+$/;
 
 // Builds the lostark.bible link for a character to prefill the manual override.
 // Names logged anonymously contain "#" - those (and a missing region/name) can't
@@ -168,7 +202,10 @@ const PET_LABEL: Record<string, string> = {
 // Live preview mirroring the snapshot combatStats logic. The authoritative
 // values are still computed server-side from the snapshot in phase 2; this only
 // shows the user what to expect.
-function previewStats(support: SupportPreview | undefined, inputs: Record<string, string>) {
+function previewStats(
+  support: SupportPreview | undefined,
+  inputs: Record<string, string>,
+) {
   const specPts = support?.specPoints ?? 0;
   const swiftPts = support?.swiftPoints ?? 0;
   const rosterSpec = Number(inputs.rosterSpec) || 0;
@@ -221,7 +258,9 @@ function SpecSwiftTable({
         </div>
         <div className="spec-swift-cell spec-swift-header">Other</div>
 
-        <div className="spec-swift-cell spec-swift-row-label">{pet.label ?? "Pet"}</div>
+        <div className="spec-swift-cell spec-swift-row-label">
+          {pet.label ?? "Pet"}
+        </div>
         {(["spec", "swiftness", "other"] as const).map((value) => (
           <button
             key={value}
@@ -241,7 +280,9 @@ function SpecSwiftTable({
             id={`${idPrefix}-rosterSpec`}
             type="number"
             // value={inputs.rosterSpec ?? ""}
-            placeholder={rosterSpec.default != null ? String(rosterSpec.default) : ""}
+            placeholder={
+              rosterSpec.default != null ? String(rosterSpec.default) : ""
+            }
             disabled={locked}
             onChange={(e) => onChange("rosterSpec", e.target.value)}
           />
@@ -251,7 +292,9 @@ function SpecSwiftTable({
             id={`${idPrefix}-rosterSwift`}
             type="number"
             // value={inputs.rosterSwift ?? ""}
-            placeholder={rosterSwift.default != null ? String(rosterSwift.default) : ""}
+            placeholder={
+              rosterSwift.default != null ? String(rosterSwift.default) : ""
+            }
             disabled={locked}
             onChange={(e) => onChange("rosterSwift", e.target.value)}
           />
@@ -347,7 +390,8 @@ function GearSourcePicker({
           />
           {linkInvalid && (
             <small className="advanced-help gear-error">
-              Expected https://lostark.bible/character/&lt;region&gt;/&lt;name&gt;
+              Expected
+              https://lostark.bible/character/&lt;region&gt;/&lt;name&gt;
             </small>
           )}
         </label>
@@ -396,13 +440,17 @@ export function PrefillCard({ card, onDone }: PrefillCardProps) {
 
   // For <=1 party the worker keys everything under "all" (see fetchLogPhase /
   // buildSupportInfo); multi-party is keyed by party number.
-  const [selectedKey, setSelectedKey] = useState<string | null>(showPicker ? null : "all");
+  const [selectedKey, setSelectedKey] = useState<string | null>(
+    showPicker ? null : "all",
+  );
   // Each party (support) gets its own inputs/pet-touched/done/status bucket -
   // switching parties must neither leak one party's edits into another nor
   // leave a completed party's "Done" state stuck on a different, unsubmitted
   // party. `submitting` stays a single shared lock (only one
   // /api/log-prefill-party request in flight across the whole card at a time).
-  const [partyState, setPartyState] = useState<Record<string, PartyFormState>>({});
+  const [partyState, setPartyState] = useState<Record<string, PartyFormState>>(
+    {},
+  );
   const [submitting, setSubmitting] = useState(false);
 
   // Pending auto-retry timers, keyed by party, so they can be cleared on unmount
@@ -416,7 +464,12 @@ export function PrefillCard({ card, onDone }: PrefillCardProps) {
   }, []);
 
   function defaultPartyState(): PartyFormState {
-    return { inputs: seedInputs(inputsDefs), petTouched: false, done: false, status: null };
+    return {
+      inputs: seedInputs(inputsDefs),
+      petTouched: false,
+      done: false,
+      status: null,
+    };
   }
 
   function getParty(key: string | null): PartyFormState {
@@ -425,7 +478,9 @@ export function PrefillCard({ card, onDone }: PrefillCardProps) {
 
   function updateParty(
     key: string,
-    patch: Partial<PartyFormState> | ((s: PartyFormState) => Partial<PartyFormState>)
+    patch:
+      | Partial<PartyFormState>
+      | ((s: PartyFormState) => Partial<PartyFormState>),
   ) {
     setPartyState((prev) => {
       const base = prev[key] ?? defaultPartyState();
@@ -437,8 +492,11 @@ export function PrefillCard({ card, onDone }: PrefillCardProps) {
   // Members of a given party key (for <=1 party everything is keyed "all").
   function playersForKey(key: string): PartyMemberInfo[] {
     if (card.parties.length === 0) return [];
-    if (key === "all" || card.parties.length <= 1) return card.parties[0]?.players ?? [];
-    return card.parties.find((p) => String(p.partyNumber) === key)?.players ?? [];
+    if (key === "all" || card.parties.length <= 1)
+      return card.parties[0]?.players ?? [];
+    return (
+      card.parties.find((p) => String(p.partyNumber) === key)?.players ?? []
+    );
   }
 
   async function submit(partyKey: string) {
@@ -456,16 +514,30 @@ export function PrefillCard({ card, onDone }: PrefillCardProps) {
     const uptimeMember = (st.uptimeMember ?? dflt) || undefined;
     // Links only apply in "manual" mode; otherwise the in-game snapshot is used.
     const supportGearLink =
-      st.supportGearMode === "manual" ? st.supportGearLink?.trim() || undefined : undefined;
+      st.supportGearMode === "manual"
+        ? st.supportGearLink?.trim() || undefined
+        : undefined;
     const dpsGearLink =
-      st.dpsGearMode === "manual" ? st.dpsGearLink?.trim() || undefined : undefined;
+      st.dpsGearMode === "manual"
+        ? st.dpsGearLink?.trim() || undefined
+        : undefined;
     try {
       await streamRequest(
         "/api/log-prefill-party",
-        { jobId: card.jobId, partyKey, inputs, gearMember, uptimeMember, supportGearLink, dpsGearLink },
+        {
+          jobId: card.jobId,
+          partyKey,
+          inputs,
+          gearMember,
+          uptimeMember,
+          supportGearLink,
+          dpsGearLink,
+        },
         (evt) => {
           if (evt.type === "status") {
-            updateParty(partyKey, { status: { text: evt.message, tag: "info" } });
+            updateParty(partyKey, {
+              status: { text: evt.message, tag: "info" },
+            });
           } else if (evt.type === "prefill-done") {
             updateParty(partyKey, {
               status: { text: evt.message, tag: "ok" },
@@ -473,13 +545,18 @@ export function PrefillCard({ card, onDone }: PrefillCardProps) {
             });
             onDone(evt.spreadsheetUrl);
           } else if (evt.type === "error") {
-            updateParty(partyKey, { status: { text: evt.message, tag: "err" } });
+            updateParty(partyKey, {
+              status: { text: evt.message, tag: "err" },
+            });
           }
-        }
+        },
       );
     } catch (err) {
       updateParty(partyKey, {
-        status: { text: err instanceof ApiError ? err.message : "Connection error", tag: "err" },
+        status: {
+          text: err instanceof ApiError ? err.message : "Connection error",
+          tag: "err",
+        },
       });
       setSubmitting(false);
       return;
@@ -547,17 +624,22 @@ export function PrefillCard({ card, onDone }: PrefillCardProps) {
               validation: markPendingErrored(s.validation),
             }));
           }
-        }
+        },
       );
     } catch {
       streamError = true;
-      updateParty(partyKey, (s) => ({ validation: markPendingErrored(s.validation) }));
+      updateParty(partyKey, (s) => ({
+        validation: markPendingErrored(s.validation),
+      }));
     }
 
     // Any member unresolved (errored, or never reported due to a stream error)?
     const hasErrors =
       streamError ||
-      players.some((m) => latest[m.name] === undefined || latest[m.name]!.state === "error");
+      players.some(
+        (m) =>
+          latest[m.name] === undefined || latest[m.name]!.state === "error",
+      );
     if (hasErrors && attempt < MAX_VALIDATION_ATTEMPTS) {
       // Show the failed members as "retrying" during the wait so they don't read
       // as final, then re-run after the browser cap has had time to recover.
@@ -594,7 +676,7 @@ export function PrefillCard({ card, onDone }: PrefillCardProps) {
   const current = getParty(selectedKey);
   const preview = useMemo(
     () => (selectedKey ? previewStats(support, current.inputs) : null),
-    [selectedKey, support, current.inputs]
+    [selectedKey, support, current.inputs],
   );
 
   // Auto-seed this party's Pet cell from its support's spec points (spec if
@@ -664,9 +746,12 @@ export function PrefillCard({ card, onDone }: PrefillCardProps) {
     selectedKey && updateParty(selectedKey, { supportGearLink: v });
   const setDpsGearLink = (v: string) =>
     selectedKey && updateParty(selectedKey, { dpsGearLink: v });
-  const linkInvalid = (v: string) => v.trim() !== "" && !CHARACTER_URL_PATTERN.test(v.trim());
-  const supportGearLinkInvalid = supportGearMode === "manual" && linkInvalid(supportGearLink);
-  const dpsGearLinkInvalid = dpsGearMode === "manual" && linkInvalid(dpsGearLink);
+  const linkInvalid = (v: string) =>
+    v.trim() !== "" && !CHARACTER_URL_PATTERN.test(v.trim());
+  const supportGearLinkInvalid =
+    supportGearMode === "manual" && linkInvalid(supportGearLink);
+  const dpsGearLinkInvalid =
+    dpsGearMode === "manual" && linkInvalid(dpsGearLink);
   const linksInvalid = supportGearLinkInvalid || dpsGearLinkInvalid;
 
   // The party's (single) support, shown in the disabled support gear dropdown.
@@ -685,7 +770,9 @@ export function PrefillCard({ card, onDone }: PrefillCardProps) {
   }, [selectedKey, gearValue, region]);
   useEffect(() => {
     if (!selectedKey) return;
-    updateParty(selectedKey, { supportGearLink: characterLink(region, supportName) });
+    updateParty(selectedKey, {
+      supportGearLink: characterLink(region, supportName),
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedKey, supportName, region]);
 
@@ -711,13 +798,19 @@ export function PrefillCard({ card, onDone }: PrefillCardProps) {
     // Skin bonus is derived from the loadout when the support gear comes from a
     // manual character-link override - the worker fills F18 from the loadout's
     // avatar skins, so the manual slider is inert. Disable it and say so.
-    const loadoutComputed = inp.id === "skinBonus" && supportGearMode === "manual";
+    const loadoutComputed =
+      inp.id === "skinBonus" && supportGearMode === "manual";
     const disabled = locked || loadoutComputed;
     return (
       <div className="advanced-field" key={inp.id}>
         <label htmlFor={fieldId}>{inp.label}</label>
         {inp.type === "select" ? (
-          <select id={fieldId} value={current.inputs[inp.id] ?? ""} disabled={disabled} onChange={(e) => onChange(e.target.value)}>
+          <select
+            id={fieldId}
+            value={current.inputs[inp.id] ?? ""}
+            disabled={disabled}
+            onChange={(e) => onChange(e.target.value)}
+          >
             {inp.options?.map((o) => (
               <option key={o.value} value={o.value}>
                 {o.label}
@@ -737,7 +830,9 @@ export function PrefillCard({ card, onDone }: PrefillCardProps) {
               onChange={(e) => onChange(e.target.value)}
             />
             <span className="range-value">
-              {loadoutComputed ? "auto" : `${current.inputs[inp.id]}${inp.unit ?? ""}`}
+              {loadoutComputed
+                ? "auto"
+                : `${current.inputs[inp.id]}${inp.unit ?? ""}`}
             </span>
           </div>
         ) : (
@@ -751,7 +846,9 @@ export function PrefillCard({ card, onDone }: PrefillCardProps) {
           />
         )}
         {loadoutComputed ? (
-          <small className="advanced-help">Computed directly from the loadout's skins.</small>
+          <small className="advanced-help">
+            Computed directly from the loadout's skins.
+          </small>
         ) : (
           inp.help && <small className="advanced-help">{inp.help}</small>
         )}
@@ -766,7 +863,8 @@ export function PrefillCard({ card, onDone }: PrefillCardProps) {
       {showPicker ? (
         <>
           <div className="pick-card-summary">
-            Choose which party the support was in (used for uptime calculations):
+            Choose which party the support was in (used for uptime
+            calculations):
           </div>
           <div className="option-btn-grid">
             {card.parties.map((party) => {
@@ -785,9 +883,15 @@ export function PrefillCard({ card, onDone }: PrefillCardProps) {
                   <div>Party {party.partyNumber + 1}</div>
                   <PartyMembers
                     players={party.players}
-                    validation={selectedKey === key ? current.validation : undefined}
+                    validation={
+                      selectedKey === key ? current.validation : undefined
+                    }
                     reserveBadge={card.parties.length > 1}
-                    onRetry={selectedKey === key ? () => retryValidation(key) : undefined}
+                    onRetry={
+                      selectedKey === key
+                        ? () => retryValidation(key)
+                        : undefined
+                    }
                   />
                 </button>
               );
@@ -801,7 +905,9 @@ export function PrefillCard({ card, onDone }: PrefillCardProps) {
             <PartyMembers
               players={card.parties[0]!.players}
               validation={current.validation}
-              onRetry={selectedKey ? () => retryValidation(selectedKey) : undefined}
+              onRetry={
+                selectedKey ? () => retryValidation(selectedKey) : undefined
+              }
             />
           </div>
         )
@@ -873,12 +979,13 @@ export function PrefillCard({ card, onDone }: PrefillCardProps) {
         <div className="advanced-inline">
           {support?.name && preview && (
             <div className="support-preview">
-              Support <strong>{support.name}</strong> - spec {support.specPoints} / swift{" "}
-              {support.swiftPoints} pts · pet -&gt;{" "}
+              Support <strong>{support.name}</strong> - spec{" "}
+              {support.specPoints} / swift {support.swiftPoints} pts · pet -&gt;{" "}
               <strong>{PET_LABEL[preview.pet] ?? preview.pet}</strong>
               <span className="support-preview-totals">
                 {" "}
-                -&gt; <strong>{preview.spec}</strong> spec / <strong>{preview.swift}</strong> swift (before bracelet)
+                -&gt; <strong>{preview.spec}</strong> spec /{" "}
+                <strong>{preview.swift}</strong> swift (before bracelet)
               </span>
             </div>
           )}
@@ -886,7 +993,9 @@ export function PrefillCard({ card, onDone }: PrefillCardProps) {
             <summary>Advanced inputs</summary>
             {sections.map(([section, defs]) => (
               <div className="advanced-section" key={section || "default"}>
-                {section && <div className="advanced-section-head">{section}</div>}
+                {section && (
+                  <div className="advanced-section-head">{section}</div>
+                )}
                 {section === "Specialization / Swiftness" ? (
                   <SpecSwiftTable
                     pet={defs.find((d) => d.id === "pet")!}
@@ -921,7 +1030,11 @@ export function PrefillCard({ card, onDone }: PrefillCardProps) {
         </div>
       )}
 
-      {current.status && <div className={`pick-status ${current.status.tag}`}>{current.status.text}</div>}
+      {current.status && (
+        <div className={`pick-status ${current.status.tag}`}>
+          {current.status.text}
+        </div>
+      )}
     </div>
   );
 }

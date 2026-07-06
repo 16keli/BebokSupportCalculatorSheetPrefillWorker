@@ -12,7 +12,11 @@
 
 import puppeteer from "@cloudflare/puppeteer";
 import { unflatten } from "devalue";
-import { evaluateSource, resolveRoot, type CompiledSource } from "./configEngine";
+import {
+  evaluateSource,
+  resolveRoot,
+  type CompiledSource,
+} from "./configEngine";
 import { selectSourceForPayload } from "./version";
 import {
   dataJsonUrl,
@@ -59,7 +63,7 @@ const ENGRAVING_NAMES = ENGRAVING_NAMES_MAP as Record<string, string>;
 function cleanEngravings(list: unknown): string[] {
   return (Array.isArray(list) ? list : []).filter(
     (e: unknown): e is string =>
-      typeof e === "string" && e !== "Unknown" && !e.includes("Reduction")
+      typeof e === "string" && e !== "Unknown" && !e.includes("Reduction"),
   );
 }
 
@@ -77,7 +81,10 @@ function arkNodeMap(arr: unknown): Record<number, number> {
 
 // Counts nodes whose allocated level differs between two ark-passive trees
 // (keyed id -> level). Missing on either side counts as 0.
-function treeDiffs(a: Record<number, number>, b: Record<number, number>): number {
+function treeDiffs(
+  a: Record<number, number>,
+  b: Record<number, number>,
+): number {
   const ids = new Set([...Object.keys(a), ...Object.keys(b)].map(Number));
   let d = 0;
   for (const id of ids) if ((a[id] ?? 0) !== (b[id] ?? 0)) d++;
@@ -118,7 +125,7 @@ async function withPage<T>(
   browserBinding: BrowserBinding,
   fn: (page: import("@cloudflare/puppeteer").Page) => Promise<T>,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  sharedBrowser?: any
+  sharedBrowser?: any,
 ): Promise<T> {
   const browser = sharedBrowser ?? (await acquireBrowser(browserBinding));
   try {
@@ -150,7 +157,9 @@ const BROWSER_KEEP_ALIVE_MS = 60_000;
 // moment to become reconnectable, and the per-minute launch budget recovers over
 // time - so when two passes run back-to-back, waiting a couple seconds lets the
 // second reconnect to the first's freed session instead of launching (and 429ing).
-export async function acquireBrowser(browserBinding: BrowserBinding): Promise<unknown> {
+export async function acquireBrowser(
+  browserBinding: BrowserBinding,
+): Promise<unknown> {
   const MAX_ATTEMPTS = 4;
   let lastErr: unknown;
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
@@ -161,7 +170,9 @@ export async function acquireBrowser(browserBinding: BrowserBinding): Promise<un
       const sessions = await puppeteer.sessions(browserBinding);
       // A session with no connectionId has no active puppeteer connection - free
       // to reconnect to. Try each (another request may grab one first).
-      const free = sessions.filter((s: { connectionId?: string }) => !s.connectionId);
+      const free = sessions.filter(
+        (s: { connectionId?: string }) => !s.connectionId,
+      );
       for (const s of free as { sessionId: string }[]) {
         try {
           return await puppeteer.connect(browserBinding, s.sessionId);
@@ -169,7 +180,9 @@ export async function acquireBrowser(browserBinding: BrowserBinding): Promise<un
           // Taken or closed between listing and connecting - try the next.
         }
       }
-      return await puppeteer.launch(browserBinding, { keep_alive: BROWSER_KEEP_ALIVE_MS });
+      return await puppeteer.launch(browserBinding, {
+        keep_alive: BROWSER_KEEP_ALIVE_MS,
+      });
     } catch (err) {
       // Retry only the browser-creation rate limit; surface anything else at once.
       lastErr = err;
@@ -223,7 +236,7 @@ async function fetchPayload(
   // Optional caller-owned browser to reuse (avoids a per-call launch). Only used
   // on a cache miss, so passing it costs nothing when the payload is cached.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  sharedBrowser?: any
+  sharedBrowser?: any,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<any> {
   const dataUrl = dataJsonUrl(url);
@@ -240,7 +253,7 @@ async function fetchPayload(
       });
       return (await response?.json()) as RawEnvelope | undefined;
     },
-    sharedBrowser
+    sharedBrowser,
   );
 
   if (!raw || !Array.isArray(raw.nodes)) {
@@ -282,17 +295,20 @@ export async function fetchLogPhase(
   browserBinding: BrowserBinding,
   url: string,
   logVariants: CompiledSource[],
-  db?: D1Database
+  db?: D1Database,
 ): Promise<LogPhaseResult> {
   const payload = await fetchPayload(browserBinding, db, logVariants[0]!, url);
-  const { source: logSource, warning: versionWarning } = selectSourceForPayload(logVariants, payload);
+  const { source: logSource, warning: versionWarning } = selectSourceForPayload(
+    logVariants,
+    payload,
+  );
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const enc = resolveRoot(payload, logSource) as any;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const allPlayers: any[] = (enc?.entityList ?? []).filter(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (e: any) => e.entityType === "PLAYER"
+    (e: any) => e.entityType === "PLAYER",
   );
 
   const parties: PartyInfo[] = [];
@@ -364,7 +380,10 @@ export async function fetchLogPhase(
     const aggregate = evaluateSource(logSource, payload, { players, member });
     const byMember: Record<string, Record<string, FieldResult>> = {};
     for (const p of players) {
-      byMember[p.name] = evaluateSource(logSource, payload, { players: [p], member });
+      byMember[p.name] = evaluateSource(logSource, payload, {
+        players: [p],
+        member,
+      });
     }
     return { aggregate, byMember };
   };
@@ -413,10 +432,14 @@ export async function fetchSourcePhase(
   variants: CompiledSource[],
   db?: D1Database,
   inputs?: Record<string, unknown>,
-  dataVersion?: string
+  dataVersion?: string,
 ): Promise<SourcePhaseResult> {
   const payload = await fetchPayload(browserBinding, db, variants[0]!, url);
-  const { source, warning: versionWarning } = selectSourceForPayload(variants, payload, dataVersion);
+  const { source, warning: versionWarning } = selectSourceForPayload(
+    variants,
+    payload,
+    dataVersion,
+  );
   return {
     fields: evaluateSource(source, payload, undefined, inputs),
     root: resolveRoot(payload, source),
@@ -439,10 +462,16 @@ export async function fetchSnapshotRoot(
   // so each member isn't a separate puppeteer.launch that 429s on the Browser
   // Rendering new-browser limit.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  sharedBrowser?: any
+  sharedBrowser?: any,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<any> {
-  const payload = await fetchPayload(browserBinding, db, variants[0]!, url, sharedBrowser);
+  const payload = await fetchPayload(
+    browserBinding,
+    db,
+    variants[0]!,
+    url,
+    sharedBrowser,
+  );
   const { source } = selectSourceForPayload(variants, payload, dataVersion);
   return resolveRoot(payload, source);
 }
@@ -454,7 +483,9 @@ export async function fetchSnapshotRoot(
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function pickLoadout(loadouts: any[], wantSupport: boolean): any {
   if (!Array.isArray(loadouts) || loadouts.length === 0) return undefined;
-  const roleMatch = loadouts.filter((l) => !!l?.battlePoint?.isSupport === wantSupport);
+  const roleMatch = loadouts.filter(
+    (l) => !!l?.battlePoint?.isSupport === wantSupport,
+  );
   const candidates = roleMatch.length > 0 ? roleMatch : loadouts;
   return candidates.reduce((best, l) => {
     const lCp = l?.combatPower?.score ?? 0;
@@ -478,10 +509,16 @@ export async function fetchCharacterGearPhase(
   snapshotVariants: CompiledSource[],
   loadoutVariants: CompiledSource[],
   inputs?: Record<string, unknown>,
-  wantSupport = true
+  wantSupport = true,
 ): Promise<SourcePhaseResult> {
-  if (loadoutVariants.length === 0) throw new Error("No loadout datasource configured.");
-  const payload = await fetchPayload(browserBinding, undefined, loadoutVariants[0]!, characterUrl);
+  if (loadoutVariants.length === 0)
+    throw new Error("No loadout datasource configured.");
+  const payload = await fetchPayload(
+    browserBinding,
+    undefined,
+    loadoutVariants[0]!,
+    characterUrl,
+  );
   const loadouts = resolveRoot(payload, loadoutVariants[0]!);
   const chosen = pickLoadout(loadouts as unknown[] as any[], wantSupport);
   if (!chosen) throw new Error("No loadouts found for that character.");
@@ -491,7 +528,7 @@ export async function fetchCharacterGearPhase(
   const { source, warning: versionWarning } = selectSourceForPayload(
     snapshotVariants,
     wrapped,
-    "v3"
+    "v3",
   );
   const fields = evaluateSource(source, wrapped, undefined, inputs);
 
@@ -503,9 +540,19 @@ export async function fetchCharacterGearPhase(
   // skinBonusFromLoadout (rarity-weighted fraction, matching skinBonus units).
   if (wantSupport) {
     const loadoutWrapped = { data: [null, null, { loadouts: [chosen] }] };
-    const { source: loadoutSource } = selectSourceForPayload(loadoutVariants, loadoutWrapped, "v3");
-    const skin = evaluateSource(loadoutSource, loadoutWrapped, undefined, inputs).skinBonusFromLoadout;
-    if (skin && skin.error == null && skin.value !== "") fields.skinBonus = skin;
+    const { source: loadoutSource } = selectSourceForPayload(
+      loadoutVariants,
+      loadoutWrapped,
+      "v3",
+    );
+    const skin = evaluateSource(
+      loadoutSource,
+      loadoutWrapped,
+      undefined,
+      inputs,
+    ).skinBonusFromLoadout;
+    if (skin && skin.error == null && skin.value !== "")
+      fields.skinBonus = skin;
   }
 
   return {
@@ -525,7 +572,7 @@ export async function fetchCharacterGearPhase(
 export function compareSnapshotToLog(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   root: any,
-  fp: PlayerLogFingerprint | undefined
+  fp: PlayerLogFingerprint | undefined,
 ): string[] {
   if (!root || !fp) return [];
   const out: string[] = [];
@@ -537,7 +584,8 @@ export function compareSnapshotToLog(
   const snapEvo = arkNodeMap(root.arkPassive?.evolution);
   const snapEnl = arkNodeMap(root.arkPassive?.enlightenment);
   if (
-    treeDiffs(snapEvo, fp.arkEvolution) + treeDiffs(snapEnl, fp.arkEnlightenment) >
+    treeDiffs(snapEvo, fp.arkEvolution) +
+      treeDiffs(snapEnl, fp.arkEnlightenment) >
     0
   ) {
     out.push("ark-passive differs");
@@ -550,7 +598,9 @@ export function compareSnapshotToLog(
     // Snapshot engraving ids are already the character-list form (ability id +
     // 1000), the same keying as ENGRAVING_NAMES - look up directly.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (root.engravings ?? []).map((e: any) => ENGRAVING_NAMES[String(e?.id ?? 0)])
+    (root.engravings ?? []).map(
+      (e: any) => ENGRAVING_NAMES[String(e?.id ?? 0)],
+    ),
   );
   const logSet = new Set(fp.engravings);
   const snapSet = new Set(snapEngr);
@@ -562,7 +612,10 @@ export function compareSnapshotToLog(
   // 3. Combat power: a coarse "is this even the right character" check (item
   //    level proxy; both sides carry it numerically).
   const snapCp = root.combatPower?.score ?? 0;
-  if (fp.combatPower > 0 && Math.abs(snapCp - fp.combatPower) / fp.combatPower > 0.02) {
+  if (
+    fp.combatPower > 0 &&
+    Math.abs(snapCp - fp.combatPower) / fp.combatPower > 0.02
+  ) {
     out.push("combat power differs");
   }
 

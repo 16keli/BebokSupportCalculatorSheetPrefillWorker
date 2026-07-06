@@ -66,13 +66,16 @@ function readExpr(def, dirPath, what) {
     return text.replace(/\s*;?\s*$/, "");
   }
   if (typeof def.expr === "string") return def.expr;
-  throw new Error(`${what} '${def.id ?? "?"}' has neither 'expr' nor 'exprFile'`);
+  throw new Error(
+    `${what} '${def.id ?? "?"}' has neither 'expr' nor 'exprFile'`,
+  );
 }
 
 // The `fn:` literal for a field/intermediate def: a direct import reference for
 // a `.ts` module, else the inlined+adapted expression text.
 function fieldFn(def, dirPath, what) {
-  if (def.exprFile && def.exprFile.endsWith(".ts")) return moduleRef(dirPath, def.exprFile);
+  if (def.exprFile && def.exprFile.endsWith(".ts"))
+    return moduleRef(dirPath, def.exprFile);
   return inlineFieldFn(readExpr(def, dirPath, what));
 }
 
@@ -89,7 +92,9 @@ function refLiteral(src) {
   const names = src.refData ?? [];
   if (names.length === 0) return "{}";
   for (const n of names) usedRefs.add(n);
-  const entries = names.map((name) => `${JSON.stringify(name)}: REFS[${JSON.stringify(name)}]`);
+  const entries = names.map(
+    (name) => `${JSON.stringify(name)}: REFS[${JSON.stringify(name)}]`,
+  );
   return `{ ${entries.join(", ")} }`;
 }
 
@@ -106,13 +111,17 @@ function refsLiteral() {
 
 function compiledSource(src, dirPath) {
   const intermediates = (src.intermediates ?? []).map(
-    (i) => `        { id: ${JSON.stringify(i.id)}, scope: ${JSON.stringify(i.scope ?? null)}, params: ${JSON.stringify(i.params ?? null)}, fn: ${fieldFn(i, dirPath, "intermediate")} }`
+    (i) =>
+      `        { id: ${JSON.stringify(i.id)}, scope: ${JSON.stringify(i.scope ?? null)}, params: ${JSON.stringify(i.params ?? null)}, fn: ${fieldFn(i, dirPath, "intermediate")} }`,
   );
   const fields = src.fields.map(
-    (f) => `        { id: ${JSON.stringify(f.id)}, params: ${JSON.stringify(f.params ?? null)}, fn: ${fieldFn(f, dirPath, "field")} }`
+    (f) =>
+      `        { id: ${JSON.stringify(f.id)}, params: ${JSON.stringify(f.params ?? null)}, fn: ${fieldFn(f, dirPath, "field")} }`,
   );
   const fallbacks = (src.rootPathFallbacks ?? []).map(rootFn).join(", ");
-  const urlTemplate = src.urlTemplate ? JSON.stringify(src.urlTemplate) : "undefined";
+  const urlTemplate = src.urlTemplate
+    ? JSON.stringify(src.urlTemplate)
+    : "undefined";
   return `      {
         source: ${JSON.stringify(src.source)},
         version: ${JSON.stringify(src.version ?? null)},
@@ -166,7 +175,9 @@ function compileBundle(key, entries) {
   }
   if (!sheet) return null;
 
-  const sourcesSrc = sources.map((s) => compiledSource(s.data, s.dir)).join(",\n");
+  const sourcesSrc = sources
+    .map((s) => compiledSource(s.data, s.dir))
+    .join(",\n");
 
   // Compile sheet-side cell transforms (CellBinding.transform / transformFile)
   // into a { "<cell>": fn } map, and bundle the sheet's own refData (read by
@@ -180,7 +191,10 @@ function compileBundle(key, entries) {
         fn = moduleRef(sheetDir, c.transformFile);
       } else {
         const expr = c.transformFile
-          ? readFileSync(join(sheetDir, c.transformFile), "utf8").replace(/\s*;?\s*$/, "")
+          ? readFileSync(join(sheetDir, c.transformFile), "utf8").replace(
+              /\s*;?\s*$/,
+              "",
+            )
           : c.transform;
         fn = inlineTransformFn(expr);
       }

@@ -30,7 +30,11 @@ export default snapshotExpr<void, ArkGrid>(({ root, ref }) => {
 
   (root.arkGridCores || []).forEach((core: any) => {
     const meta = cap[core.id];
-    if (meta?.gemSlotPoint == null || meta.attr == null || meta.coreType == null) {
+    if (
+      meta?.gemSlotPoint == null ||
+      meta.attr == null ||
+      meta.coreType == null
+    ) {
       // Core id not in cores.json (unknown grade/variant): we can't derive its
       // identity, so fall back to the slot `base` and degrade cleanly.
       out.byBase[core.base] = {

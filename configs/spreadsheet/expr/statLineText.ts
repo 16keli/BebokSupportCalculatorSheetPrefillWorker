@@ -23,7 +23,8 @@ export default transform(({ raw, ref, arg, ctx }) => {
     if (!e || !e.text) return "";
     const scale = e.scale == null ? 1 : e.scale;
     const n = (s.value || 0) * scale;
-    const v = e.decimals == null ? Math.round(n * 1000) / 1000 : n.toFixed(e.decimals);
+    const v =
+      e.decimals == null ? Math.round(n * 1000) / 1000 : n.toFixed(e.decimals);
     return e.text.split("{value}").join(String(v));
   };
   if (Array.isArray(raw)) {
@@ -31,7 +32,9 @@ export default transform(({ raw, ref, arg, ctx }) => {
     // have no flag, so fall back to the base-attribute index set (main 3/4/5/6 +
     // combat stats 15-20). Dropping these leaves the rolled lines in original order.
     const BASE_STATS = new Set([3, 4, 5, 6, 15, 16, 17, 18, 19, 20]);
-    const lines = raw.filter((s: any) => s && s.base !== true && !BASE_STATS.has(s.index));
+    const lines = raw.filter(
+      (s: any) => s && s.base !== true && !BASE_STATS.has(s.index),
+    );
     return render(lines[(arg as number) || 0]);
   }
   return render(raw);

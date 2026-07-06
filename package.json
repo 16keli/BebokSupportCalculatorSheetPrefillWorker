@@ -5,14 +5,17 @@
   "type": "module",
   "scripts": {
     "compile-configs": "node scripts/compileConfigs.mjs",
+    "format": "biome format --write .",
+    "format:check": "biome format .",
     "dev": "npm run compile-configs && vite dev",
-    "build": "npm run compile-configs && tsc -b && vite build",
+    "build": "npm run format:check && npm run compile-configs && tsc -b && vite build",
     "preview": "npm run build && vite preview",
     "deploy": "npm run build && wrangler deploy",
     "typecheck": "npm run compile-configs && tsc -b --noEmit",
     "test:engine": "npm run compile-configs && node scripts/testEngine.ts",
     "test:version": "node scripts/testVersion.ts",
-    "cf-typegen": "wrangler types"
+    "cf-typegen": "wrangler types",
+    "prepare": "husky"
   },
   "dependencies": {
     "@cloudflare/puppeteer": "^1.1.0",
@@ -21,13 +24,21 @@
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.5.2",
     "@cloudflare/vite-plugin": "^1.40.0",
     "@cloudflare/workers-types": "^4.20260601.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^4.3.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.0.8",
     "typescript": "^5.7.0",
     "vite": "^7.0.0",
     "wrangler": "^4.0.0"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,json}": [
+      "biome format --write"
+    ]
   }
 }

@@ -54,11 +54,15 @@ const LOADOUT_HASH_PATTERN = /^v\d+\/[A-Za-z0-9]+$/;
 // instead of the in-game snapshot. Region is 2-4 letters; name is any run of
 // non-slash chars (allows unicode names). Validated before it's interpolated
 // into a scrape URL so a crafted value can't smuggle a different host/path.
-const CHARACTER_URL_PATTERN = /^https:\/\/lostark\.bible\/character\/[A-Za-z]{2,4}\/[^/\s?#]+$/;
+const CHARACTER_URL_PATTERN =
+  /^https:\/\/lostark\.bible\/character\/[A-Za-z]{2,4}\/[^/\s?#]+$/;
 
 interface RpcRequestBody {
   method: "logPrefillInitial" | "logPrefillParty" | "validateParty";
-  payload: LogPrefillInitialPayload | LogPrefillPartyPayload | LogPrefillValidatePayload;
+  payload:
+    | LogPrefillInitialPayload
+    | LogPrefillPartyPayload
+    | LogPrefillValidatePayload;
 }
 
 export class ScrapeJob extends DurableObject<Env> {
@@ -87,7 +91,9 @@ export class ScrapeJob extends DurableObject<Env> {
     if (method === "validateParty") {
       return this.validateParty(payload as LogPrefillValidatePayload);
     }
-    return new Response(JSON.stringify({ error: "Unknown method" }), { status: 400 });
+    return new Response(JSON.stringify({ error: "Unknown method" }), {
+      status: 400,
+    });
   }
 
   // ---------------------------------------------------------------------
@@ -97,13 +103,16 @@ export class ScrapeJob extends DurableObject<Env> {
   // Stores compact per-player stubs, the bundle, and per-party log field
   // results in DO storage - the raw log payload (often 1-2 MB) is never stored.
   // ---------------------------------------------------------------------
-  private async logPrefillInitial(payload: LogPrefillInitialPayload): Promise<Response> {
+  private async logPrefillInitial(
+    payload: LogPrefillInitialPayload,
+  ): Promise<Response> {
     const { configKey, logUrl } = payload;
 
     const encoder = new TextEncoder();
     const ts = new TransformStream();
     const writer = ts.writable.getWriter();
-    const send = (obj: StreamEvent) => writer.write(encoder.encode(JSON.stringify(obj) + "\n"));
+    const send = (obj: StreamEvent) =>
+      writer.write(encoder.encode(JSON.stringify(obj) + "\n"));
 
     (async () => {
       try {
@@ -114,29 +123,45 @@ export class ScrapeJob extends DurableObject<Env> {
         }
         const logVariants = findSources(bundle, "log");
         if (logVariants.length === 0) {
-          send({ type: "error", message: "Bundle has no 'log' datasource config." });
+          send({
+            type: "error",
+            message: "Bundle has no 'log' datasource config.",
+          });
           return;
         }
 
         send({ type: "status", message: "Fetching log data..." });
-        const { parties, playerEntities, logFieldResults, logFingerprints, region, versionWarning } =
-          await fetchLogPhase(
-            this.env.MYBROWSER,
-            logUrl,
-            logVariants,
-            this.env.bebok_scrape_cache
-          );
-        if (versionWarning) send({ type: "status", message: `Warning: ${versionWarning}` });
+        const {
+          parties,
+          playerEntities,
+          logFieldResults,
+          logFingerprints,
+          region,
+          versionWarning,
+        } = await fetchLogPhase(
+          this.env.MYBROWSER,
+          logUrl,
+          logVariants,
+          this.env.bebok_scrape_cache,
+        );
+        if (versionWarning)
+          send({ type: "status", message: `Warning: ${versionWarning}` });
 
         const sheetName = sheetNameFromLogUrl(logUrl);
-        const { spreadsheetId, url: sheetUrl, existed } = await getOrCopyTemplateSheet(
+        const {
+          spreadsheetId,
+          url: sheetUrl,
+          existed,
+        } = await getOrCopyTemplateSheet(
           this.env,
           bundle.sheet.templateSheet,
-          sheetName
+          sheetName,
         );
         send({
           type: "status",
-          message: existed ? `Using existing sheet: ${sheetUrl}` : `Created copy: ${sheetUrl}`,
+          message: existed
+            ? `Using existing sheet: ${sheetUrl}`
+            : `Created copy: ${sheetUrl}`,
           spreadsheetUrl: sheetUrl,
         });
 
@@ -154,7 +179,11 @@ export class ScrapeJob extends DurableObject<Env> {
         // Per-party support preview (name + spec/swift evolution points from the
         // log) so the party-pick UI can resolve the pet "auto" choice and show
         // spec/swiftness before the snapshot is fetched.
-        const supportInfo = buildSupportInfo(parties, playerEntities, logFieldResults);
+        const supportInfo = buildSupportInfo(
+          parties,
+          playerEntities,
+          logFieldResults,
+        );
 
         const autoSelect = parties.length <= 1;
         send({ type: "party-pick", parties, autoSelect, supportInfo, region });
@@ -176,11 +205,14 @@ export class ScrapeJob extends DurableObject<Env> {
   // datasource, merges with the pre-evaluated log fields for the party, then
   // resolves cells through the bundle's sheet config and writes them.
   // ---------------------------------------------------------------------
-  private async logPrefillParty(payload: LogPrefillPartyPayload): Promise<Response> {
+  private async logPrefillParty(
+    payload: LogPrefillPartyPayload,
+  ): Promise<Response> {
     const { partyKey, inputs: rawInputs, gearMember, uptimeMember } = payload;
     // Optional gear-override character links (validated before any fetch).
     const supportGearLink =
-      payload.supportGearLink && CHARACTER_URL_PATTERN.test(payload.supportGearLink)
+      payload.supportGearLink &&
+      CHARACTER_URL_PATTERN.test(payload.supportGearLink)
         ? payload.supportGearLink
         : undefined;
     const dpsGearLink =
@@ -191,21 +223,27 @@ export class ScrapeJob extends DurableObject<Env> {
     const meta = await this.ctx.storage.get<LogPrefillJobMeta>("prefill-meta");
     if (!meta) {
       return new Response(
-        JSON.stringify({ error: "Prefill job not found or expired. Re-run the initial scrape." }),
-        { status: 404 }
+        JSON.stringify({
+          error: "Prefill job not found or expired. Re-run the initial scrape.",
+        }),
+        { status: 404 },
       );
     }
 
     const encoder = new TextEncoder();
     const ts = new TransformStream();
     const writer = ts.writable.getWriter();
-    const send = (obj: StreamEvent) => writer.write(encoder.encode(JSON.stringify(obj) + "\n"));
+    const send = (obj: StreamEvent) =>
+      writer.write(encoder.encode(JSON.stringify(obj) + "\n"));
 
     (async () => {
       try {
         const bundle = COMPILED_BUNDLES[meta.configKey];
         if (!bundle) {
-          send({ type: "error", message: `Unknown config '${meta.configKey}'.` });
+          send({
+            type: "error",
+            message: `Unknown config '${meta.configKey}'.`,
+          });
           return;
         }
 
@@ -213,8 +251,9 @@ export class ScrapeJob extends DurableObject<Env> {
           meta.parties.length === 0 || partyKey === "all"
             ? null
             : new Set(
-              meta.parties.find((p) => String(p.partyNumber) === partyKey)?.playerNames ?? []
-            );
+                meta.parties.find((p) => String(p.partyNumber) === partyKey)
+                  ?.playerNames ?? [],
+              );
 
         const partyEntities = partyNames
           ? meta.playerEntities.filter((e) => partyNames.has(e.name))
@@ -272,7 +311,10 @@ export class ScrapeJob extends DurableObject<Env> {
             // Manual override: pull the support build from the pasted character
             // link's best-matching loadout instead of the (possibly inaccurate)
             // in-game snapshot. Non-fatal: on failure fall back to the snapshot.
-            send({ type: "status", message: `Fetching support gear from ${supportGearLink}...` });
+            send({
+              type: "status",
+              message: `Fetching support gear from ${supportGearLink}...`,
+            });
             try {
               const res = await fetchCharacterGearPhase(
                 this.env.MYBROWSER,
@@ -280,11 +322,15 @@ export class ScrapeJob extends DurableObject<Env> {
                 snapshotVariants,
                 loadoutVariants,
                 inputs,
-                true
+                true,
               );
               snapshotFields = res.fields;
               usedSupportOverride = true;
-              if (res.versionWarning) send({ type: "status", message: `Warning: ${res.versionWarning}` });
+              if (res.versionWarning)
+                send({
+                  type: "status",
+                  message: `Warning: ${res.versionWarning}`,
+                });
             } catch (e) {
               send({
                 type: "status",
@@ -294,28 +340,43 @@ export class ScrapeJob extends DurableObject<Env> {
           }
           if (!usedSupportOverride) {
             const snapshotUrl = `https://lostark.bible/character/snapshot/${supportEntity.loadoutHash}`;
-            send({ type: "status", message: `Fetching snapshot for ${supportEntity.name}...` });
+            send({
+              type: "status",
+              message: `Fetching snapshot for ${supportEntity.name}...`,
+            });
             const res = await fetchSourcePhase(
               this.env.MYBROWSER,
               snapshotUrl,
               snapshotVariants,
               this.env.bebok_scrape_cache,
               inputs,
-              bibleVersion
+              bibleVersion,
             );
             snapshotFields = res.fields;
-            if (res.versionWarning) send({ type: "status", message: `Warning: ${res.versionWarning}` });
+            if (res.versionWarning)
+              send({
+                type: "status",
+                message: `Warning: ${res.versionWarning}`,
+              });
           }
         }
 
         // Loadout is a separate page (skins etc.). Best-effort: only when a
         // config provides a urlTemplate and has fields; failure is non-fatal so
         // a bad/unknown loadout URL never breaks the rest of the prefill.
-        const loadoutGate = loadoutVariants.find((s) => s.urlTemplate && s.fields.length > 0);
+        const loadoutGate = loadoutVariants.find(
+          (s) => s.urlTemplate && s.fields.length > 0,
+        );
         let loadoutFields: Record<string, FieldResult> = {};
         if (loadoutGate) {
-          const loadoutUrl = loadoutGate.urlTemplate!.replace("{hash}", supportEntity.loadoutHash);
-          send({ type: "status", message: `Fetching loadout for ${supportEntity.name}...` });
+          const loadoutUrl = loadoutGate.urlTemplate!.replace(
+            "{hash}",
+            supportEntity.loadoutHash,
+          );
+          send({
+            type: "status",
+            message: `Fetching loadout for ${supportEntity.name}...`,
+          });
           try {
             const res = await fetchSourcePhase(
               this.env.MYBROWSER,
@@ -323,12 +384,19 @@ export class ScrapeJob extends DurableObject<Env> {
               loadoutVariants,
               this.env.bebok_scrape_cache,
               undefined,
-              bibleVersion
+              bibleVersion,
             );
             loadoutFields = res.fields;
-            if (res.versionWarning) send({ type: "status", message: `Warning: ${res.versionWarning}` });
+            if (res.versionWarning)
+              send({
+                type: "status",
+                message: `Warning: ${res.versionWarning}`,
+              });
           } catch (e) {
-            send({ type: "status", message: `Loadout fetch skipped: ${(e as Error).message}` });
+            send({
+              type: "status",
+              message: `Loadout fetch skipped: ${(e as Error).message}`,
+            });
           }
         }
 
@@ -337,7 +405,9 @@ export class ScrapeJob extends DurableObject<Env> {
         // member). A second snapshot fetch, namespaced as `dps:<field>` so it
         // sits alongside the support's fields without colliding. Non-fatal: a
         // missing/invalid gear member just leaves the DPS gear cells blank.
-        const hasDpsCells = bundle.sheet.cells.some((c) => c.character === "dps");
+        const hasDpsCells = bundle.sheet.cells.some(
+          (c) => c.character === "dps",
+        );
         const gearMemberName =
           gearMember ?? highestCpDps(partyMembersFor(meta, partyKey));
         let dpsSnapshotFields: Record<string, FieldResult> = {};
@@ -346,7 +416,10 @@ export class ScrapeJob extends DurableObject<Env> {
           // Manual override: source the DPS gear cells from the pasted character
           // link instead of the member's in-game snapshot. Non-fatal: on failure
           // fall through to the member snapshot below.
-          send({ type: "status", message: `Fetching DPS gear from ${dpsGearLink}...` });
+          send({
+            type: "status",
+            message: `Fetching DPS gear from ${dpsGearLink}...`,
+          });
           try {
             const res = await fetchCharacterGearPhase(
               this.env.MYBROWSER,
@@ -354,11 +427,15 @@ export class ScrapeJob extends DurableObject<Env> {
               snapshotVariants,
               loadoutVariants,
               inputs,
-              false
+              false,
             );
             dpsSnapshotFields = res.fields;
             usedDpsOverride = true;
-            if (res.versionWarning) send({ type: "status", message: `Warning: ${res.versionWarning}` });
+            if (res.versionWarning)
+              send({
+                type: "status",
+                message: `Warning: ${res.versionWarning}`,
+              });
           } catch (e) {
             send({
               type: "status",
@@ -366,9 +443,19 @@ export class ScrapeJob extends DurableObject<Env> {
             });
           }
         }
-        if (!usedDpsOverride && hasDpsCells && snapshotVariants.length > 0 && gearMemberName) {
-          const gearEntity = meta.playerEntities.find((e) => e.name === gearMemberName);
-          if (!gearEntity || !LOADOUT_HASH_PATTERN.test(gearEntity.loadoutHash)) {
+        if (
+          !usedDpsOverride &&
+          hasDpsCells &&
+          snapshotVariants.length > 0 &&
+          gearMemberName
+        ) {
+          const gearEntity = meta.playerEntities.find(
+            (e) => e.name === gearMemberName,
+          );
+          if (
+            !gearEntity ||
+            !LOADOUT_HASH_PATTERN.test(gearEntity.loadoutHash)
+          ) {
             send({
               type: "status",
               message: `DPS gear skipped: no character data for ${gearMemberName}.`,
@@ -378,7 +465,10 @@ export class ScrapeJob extends DurableObject<Env> {
             dpsSnapshotFields = snapshotFields;
           } else {
             const dpsUrl = `https://lostark.bible/character/snapshot/${gearEntity.loadoutHash}`;
-            send({ type: "status", message: `Fetching DPS gear snapshot for ${gearEntity.name}...` });
+            send({
+              type: "status",
+              message: `Fetching DPS gear snapshot for ${gearEntity.name}...`,
+            });
             try {
               const res = await fetchSourcePhase(
                 this.env.MYBROWSER,
@@ -386,12 +476,19 @@ export class ScrapeJob extends DurableObject<Env> {
                 snapshotVariants,
                 this.env.bebok_scrape_cache,
                 inputs,
-                versionFromLoadoutHash(gearEntity.loadoutHash)
+                versionFromLoadoutHash(gearEntity.loadoutHash),
               );
               dpsSnapshotFields = res.fields;
-              if (res.versionWarning) send({ type: "status", message: `Warning: ${res.versionWarning}` });
+              if (res.versionWarning)
+                send({
+                  type: "status",
+                  message: `Warning: ${res.versionWarning}`,
+                });
             } catch (e) {
-              send({ type: "status", message: `DPS gear fetch skipped: ${(e as Error).message}` });
+              send({
+                type: "status",
+                message: `DPS gear fetch skipped: ${(e as Error).message}`,
+              });
             }
           }
         }
@@ -400,9 +497,11 @@ export class ScrapeJob extends DurableObject<Env> {
         // the selected member's per-member result, or the party-wide aggregate
         // ("aggregate", or when no member is selectable). Default: the same
         // highest-combatPower non-support member as the gear default.
-        const partyResults = meta.logFieldResults[partyKey] ?? meta.logFieldResults["all"];
+        const partyResults =
+          meta.logFieldResults[partyKey] ?? meta.logFieldResults["all"];
         const aggregateLog = partyResults?.aggregate ?? {};
-        const uptimeName = uptimeMember ?? highestCpDps(partyMembersFor(meta, partyKey));
+        const uptimeName =
+          uptimeMember ?? highestCpDps(partyMembersFor(meta, partyKey));
         const logFields =
           uptimeName && uptimeName !== "aggregate"
             ? (partyResults?.byMember[uptimeName] ?? aggregateLog)
@@ -423,7 +522,10 @@ export class ScrapeJob extends DurableObject<Env> {
         }
         // Only surface skipped cells that failed due to an error (not just empty values, which
         // are normal for optional fields the character doesn't have).
-        const errored = skipped.filter((s) => s.reason.startsWith("error:") || s.reason === "field not produced");
+        const errored = skipped.filter(
+          (s) =>
+            s.reason.startsWith("error:") || s.reason === "field not produced",
+        );
         const errorMsg = errored.length
           ? ` Errors: ${errored.map((s) => `${s.field}: ${s.reason}`).join("; ")}.`
           : "";
@@ -454,21 +556,24 @@ export class ScrapeJob extends DurableObject<Env> {
   // reported with an `error` and never blocks configuration.
   // ---------------------------------------------------------------------
   private async validateParty(
-    payload: LogPrefillValidatePayload & { bucket?: string; bypass?: boolean }
+    payload: LogPrefillValidatePayload & { bucket?: string; bypass?: boolean },
   ): Promise<Response> {
     const { partyKey, bucket, bypass } = payload;
     const meta = await this.ctx.storage.get<LogPrefillJobMeta>("prefill-meta");
     if (!meta) {
       return new Response(
-        JSON.stringify({ error: "Prefill job not found or expired. Re-run the initial scrape." }),
-        { status: 404 }
+        JSON.stringify({
+          error: "Prefill job not found or expired. Re-run the initial scrape.",
+        }),
+        { status: 404 },
       );
     }
 
     const encoder = new TextEncoder();
     const ts = new TransformStream();
     const writer = ts.writable.getWriter();
-    const send = (obj: StreamEvent) => writer.write(encoder.encode(JSON.stringify(obj) + "\n"));
+    const send = (obj: StreamEvent) =>
+      writer.write(encoder.encode(JSON.stringify(obj) + "\n"));
 
     (async () => {
       try {
@@ -485,12 +590,17 @@ export class ScrapeJob extends DurableObject<Env> {
         // or consume any quota.
         const cacheKey = `validation:${partyKey}`;
         const cached =
-          await this.ctx.storage.get<Record<string, { warnings?: string[]; error?: string }>>(
-            cacheKey
-          );
+          await this.ctx.storage.get<
+            Record<string, { warnings?: string[]; error?: string }>
+          >(cacheKey);
         if (cached) {
           for (const [name, r] of Object.entries(cached)) {
-            send({ type: "snapshot-checked", name, warnings: r.warnings, error: r.error });
+            send({
+              type: "snapshot-checked",
+              name,
+              warnings: r.warnings,
+              error: r.error,
+            });
           }
           send({ type: "snapshot-check-done" });
           return;
@@ -500,13 +610,16 @@ export class ScrapeJob extends DurableObject<Env> {
           meta.parties.length === 0 || partyKey === "all"
             ? null
             : new Set(
-              meta.parties.find((p) => String(p.partyNumber) === partyKey)?.playerNames ?? []
-            );
+                meta.parties.find((p) => String(p.partyNumber) === partyKey)
+                  ?.playerNames ?? [],
+              );
         const partyEntities = partyNames
           ? meta.playerEntities.filter((e) => partyNames.has(e.name))
           : meta.playerEntities;
 
-        const fetchable = partyEntities.filter((e) => LOADOUT_HASH_PATTERN.test(e.loadoutHash));
+        const fetchable = partyEntities.filter((e) =>
+          LOADOUT_HASH_PATTERN.test(e.loadoutHash),
+        );
 
         // Rate-limit gating: charge only for members whose snapshot isn't already
         // in the D1 cache (each miss is a real headless-browser render). Cache
@@ -519,12 +632,16 @@ export class ScrapeJob extends DurableObject<Env> {
               e.name,
               await hasCachedPayload(
                 this.env.bebok_scrape_cache,
-                dataJsonUrl(`https://lostark.bible/character/snapshot/${e.loadoutHash}`)
-              )
+                dataJsonUrl(
+                  `https://lostark.bible/character/snapshot/${e.loadoutHash}`,
+                ),
+              ),
             );
-          })
+          }),
         );
-        const missCount = [...cachedByName.values()].filter((hit) => !hit).length;
+        const missCount = [...cachedByName.values()].filter(
+          (hit) => !hit,
+        ).length;
         if (missCount > 0 && bucket && !bypass) {
           const rl = await this.consumeRateLimit(bucket, missCount);
           if (!rl.allowed) {
@@ -544,9 +661,10 @@ export class ScrapeJob extends DurableObject<Env> {
         // cached), and the Browser Rendering binding limits concurrent sessions.
         console.log(
           `[validateParty] partyKey=${partyKey} entities=${partyEntities.length} ` +
-            `fetchable=${fetchable.length} missCount=${missCount} variants=${snapshotVariants.length}`
+            `fetchable=${fetchable.length} missCount=${missCount} variants=${snapshotVariants.length}`,
         );
-        const results: Record<string, { warnings?: string[]; error?: string }> = {};
+        const results: Record<string, { warnings?: string[]; error?: string }> =
+          {};
         // Reuse ONE browser for every member's snapshot. Each puppeteer.launch
         // counts against Browser Rendering's new-browser-per-minute limit, so a
         // launch-per-member loop 429s after a couple; one shared session renders
@@ -561,7 +679,9 @@ export class ScrapeJob extends DurableObject<Env> {
           try {
             sharedBrowser = await acquireBrowser(this.env.MYBROWSER);
           } catch (e) {
-            console.error(`[validateParty] browser unavailable: ${(e as Error).message}`);
+            console.error(
+              `[validateParty] browser unavailable: ${(e as Error).message}`,
+            );
           }
         }
         try {
@@ -581,7 +701,9 @@ export class ScrapeJob extends DurableObject<Env> {
               continue;
             }
             const url = `https://lostark.bible/character/snapshot/${entity.loadoutHash}`;
-            console.log(`[validateParty] fetching snapshot for ${entity.name} (${url})`);
+            console.log(
+              `[validateParty] fetching snapshot for ${entity.name} (${url})`,
+            );
             try {
               const root = await fetchSnapshotRoot(
                 this.env.MYBROWSER,
@@ -589,18 +711,21 @@ export class ScrapeJob extends DurableObject<Env> {
                 snapshotVariants,
                 this.env.bebok_scrape_cache,
                 versionFromLoadoutHash(entity.loadoutHash),
-                sharedBrowser
+                sharedBrowser,
               );
-              const warnings = compareSnapshotToLog(root, meta.logFingerprints[entity.name]);
+              const warnings = compareSnapshotToLog(
+                root,
+                meta.logFingerprints[entity.name],
+              );
               results[entity.name] = { warnings };
               console.log(
-                `[validateParty] ok ${entity.name} warnings=${JSON.stringify(warnings)}`
+                `[validateParty] ok ${entity.name} warnings=${JSON.stringify(warnings)}`,
               );
               send({ type: "snapshot-checked", name: entity.name, warnings });
             } catch (e) {
               const error = (e as Error).message;
               console.error(
-                `[validateParty] FAILED ${entity.name}: ${error}\n${(e as Error).stack ?? ""}`
+                `[validateParty] FAILED ${entity.name}: ${error}\n${(e as Error).stack ?? ""}`,
               );
               results[entity.name] = { error };
               send({ type: "snapshot-checked", name: entity.name, error });
@@ -617,12 +742,12 @@ export class ScrapeJob extends DurableObject<Env> {
         if (!anyErrors) await this.ctx.storage.put(cacheKey, results);
         console.log(
           `[validateParty] done partyKey=${partyKey} persisted=${!anyErrors} ` +
-            `results=${JSON.stringify(results)}`
+            `results=${JSON.stringify(results)}`,
         );
         send({ type: "snapshot-check-done" });
       } catch (err) {
         console.error(
-          `[validateParty] fatal: ${(err as Error).message}\n${(err as Error).stack ?? ""}`
+          `[validateParty] fatal: ${(err as Error).message}\n${(err as Error).stack ?? ""}`,
         );
         send({ type: "error", message: (err as Error).message });
       } finally {
@@ -639,7 +764,10 @@ export class ScrapeJob extends DurableObject<Env> {
   // RateLimiter DO the Worker uses for phase 1). Kept here so validateParty can
   // meter only the members it will actually render, using cache/dedupe state
   // that isn't visible at the Worker layer.
-  private async consumeRateLimit(bucket: string, count: number): Promise<RateLimitResult> {
+  private async consumeRateLimit(
+    bucket: string,
+    count: number,
+  ): Promise<RateLimitResult> {
     const id = this.env.RATE_LIMITER.idFromName(bucket);
     const stub = this.env.RATE_LIMITER.get(id);
     const res = await stub.fetch("https://do/", {
@@ -657,12 +785,17 @@ function sheetNameFromLogUrl(logUrl: string): string {
 
 // The display members (with combat power) of the selected party. For <=1 party
 // everything is keyed "all", so return every member; otherwise the named party.
-function partyMembersFor(meta: LogPrefillJobMeta, partyKey: string): PartyMemberInfo[] {
+function partyMembersFor(
+  meta: LogPrefillJobMeta,
+  partyKey: string,
+): PartyMemberInfo[] {
   if (meta.parties.length === 0) return [];
   if (partyKey === "all" || meta.parties.length <= 1) {
     return meta.parties.flatMap((p) => p.players);
   }
-  return meta.parties.find((p) => String(p.partyNumber) === partyKey)?.players ?? [];
+  return (
+    meta.parties.find((p) => String(p.partyNumber) === partyKey)?.players ?? []
+  );
 }
 
 // Name of the non-support member with the highest combat power - the default
@@ -681,15 +814,18 @@ function highestCpDps(members: PartyMemberInfo[]): string | undefined {
 function buildSupportInfo(
   parties: PartyInfo[],
   playerEntities: PlayerEntity[],
-  logFieldResults: Record<string, PartyLogResults>
+  logFieldResults: Record<string, PartyLogResults>,
 ): Record<string, SupportPreview> {
   const groups: Array<[string, PlayerEntity[]]> =
     parties.length <= 1
       ? [["all", playerEntities]]
       : parties.map((p) => {
-        const names = new Set(p.playerNames);
-        return [String(p.partyNumber), playerEntities.filter((e) => names.has(e.name))];
-      });
+          const names = new Set(p.playerNames);
+          return [
+            String(p.partyNumber),
+            playerEntities.filter((e) => names.has(e.name)),
+          ];
+        });
 
   const out: Record<string, SupportPreview> = {};
   for (const [key, players] of groups) {

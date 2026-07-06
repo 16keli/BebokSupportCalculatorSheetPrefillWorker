@@ -6,11 +6,12 @@
 // Bindings: $ (classSkills, skillGems).
 import { snapshotExpr } from "../../_context.ts";
 
-export default snapshotExpr<{ slot: "ap1" | "ap2" | "brand"; kind: "dmg" | "cdr" }>(
-  ({ $ }, { slot, kind }) => {
-    const s = $.classSkills[slot];
-    if (!s) return "";
-    const g = $.skillGems[s.id];
-    return g?.[kind] ?? "";
-  }
-);
+export default snapshotExpr<{
+  slot: "ap1" | "ap2" | "brand";
+  kind: "dmg" | "cdr";
+}>(({ $ }, { slot, kind }) => {
+  const s = $.classSkills[slot];
+  if (!s) return "";
+  const g = $.skillGems[s.id];
+  return g?.[kind] ?? "";
+});

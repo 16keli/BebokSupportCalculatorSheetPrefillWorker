@@ -11,7 +11,12 @@ import { loadoutExpr } from "../../_context.ts";
 export default loadoutExpr(({ $ }) => {
   const L = $.activeLoadout;
   if (!L) return "";
-  const main = ["avatar_weapon", "avatar_head", "avatar_upper_body", "avatar_lower_body"];
+  const main = [
+    "avatar_weapon",
+    "avatar_head",
+    "avatar_upper_body",
+    "avatar_lower_body",
+  ];
   const pct = (L.items || []).reduce((acc: number, i: any) => {
     if (main.indexOf(i.slot) < 0) return acc;
     if ($.skinLegend.has(i.id)) return acc + 2;

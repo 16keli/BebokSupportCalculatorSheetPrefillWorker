@@ -96,7 +96,9 @@ export class RateLimiter extends DurableObject<Env> {
       });
     }
 
-    return new Response(JSON.stringify({ error: "Unknown method" }), { status: 400 });
+    return new Response(JSON.stringify({ error: "Unknown method" }), {
+      status: 400,
+    });
   }
 
   private async handleWebSocketUpgrade(): Promise<Response> {
@@ -128,7 +130,11 @@ export class RateLimiter extends DurableObject<Env> {
     ws.send(JSON.stringify(await this.computeQuotaSnapshot()));
   }
 
-  async webSocketClose(ws: WebSocket, code: number, reason: string): Promise<void> {
+  async webSocketClose(
+    ws: WebSocket,
+    code: number,
+    reason: string,
+  ): Promise<void> {
     ws.close(code, reason);
   }
 
@@ -153,7 +159,8 @@ export class RateLimiter extends DurableObject<Env> {
   private async ensureAlarmScheduledIfAtCapacity(): Promise<void> {
     const now = Date.now();
     const cutoff = now - WINDOW_MS;
-    const timestamps = (await this.ctx.storage.get<number[]>("timestamps")) ?? [];
+    const timestamps =
+      (await this.ctx.storage.get<number[]>("timestamps")) ?? [];
     const active = timestamps.filter((t) => t > cutoff);
 
     if (active.length < MAX_PER_WINDOW) return; // room to spare, nothing to watch for
@@ -187,7 +194,8 @@ export class RateLimiter extends DurableObject<Env> {
     const now = Date.now();
     const cutoff = now - WINDOW_MS;
 
-    const timestamps = (await this.ctx.storage.get<number[]>("timestamps")) ?? [];
+    const timestamps =
+      (await this.ctx.storage.get<number[]>("timestamps")) ?? [];
     const active = timestamps.filter((t) => t > cutoff);
     if (active.length !== timestamps.length) {
       await this.ctx.storage.put("timestamps", active);
@@ -202,7 +210,13 @@ export class RateLimiter extends DurableObject<Env> {
       msUntilNextSlot = Math.max(0, oldest + WINDOW_MS - now);
     }
 
-    return { type: "quota", remaining, limit: MAX_PER_WINDOW, usedInWindow, msUntilNextSlot };
+    return {
+      type: "quota",
+      remaining,
+      limit: MAX_PER_WINDOW,
+      usedInWindow,
+      msUntilNextSlot,
+    };
   }
 
   // Atomically checks whether `count` more URLs can be consumed within the
@@ -214,7 +228,8 @@ export class RateLimiter extends DurableObject<Env> {
     const now = Date.now();
     const cutoff = now - WINDOW_MS;
 
-    const timestamps = (await this.ctx.storage.get<number[]>("timestamps")) ?? [];
+    const timestamps =
+      (await this.ctx.storage.get<number[]>("timestamps")) ?? [];
     const active = timestamps.filter((t) => t > cutoff);
 
     const currentCountInWindow = active.length;

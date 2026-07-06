@@ -4,7 +4,9 @@
 import { snapshotExpr } from "../../_context.ts";
 
 export default snapshotExpr(({ root, ref }) => {
-  const g = (root.gems || []).find((x: any) => (x.effects || []).some((e: any) => e.type === 65));
+  const g = (root.gems || []).find((x: any) =>
+    (x.effects || []).some((e: any) => e.type === 65),
+  );
   if (!g) return "";
   const lv = ref.gems?.[g.id]?.level;
   return lv != null ? lv : "";

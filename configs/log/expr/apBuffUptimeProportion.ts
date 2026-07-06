@@ -8,9 +8,12 @@
 import { logExpr } from "../../_context.ts";
 
 export default logExpr(({ root, ref, $, sum }) => {
-  const buffs = (root.encounterDamageStats && root.encounterDamageStats.buffs) || {};
+  const buffs =
+    (root.encounterDamageStats && root.encounterDamageStats.buffs) || {};
   const AP = new Set([101105, 314004, 101204, 480030]);
-  const AP1 = new Set((ref.skills || []).filter((s) => s.type === "ap1").map((s) => s.id));
+  const AP1 = new Set(
+    (ref.skills || []).filter((s) => s.type === "ap1").map((s) => s.id),
+  );
   const acc = (p: any) =>
     Object.entries(p.damageStats.buffedBy || {}).reduce(
       (o, kv) => {
@@ -21,7 +24,7 @@ export default logExpr(({ root, ref, $, sum }) => {
         }
         return o;
       },
-      { total: 0, ap1: 0 }
+      { total: 0, ap1: 0 },
     );
   const total = sum($.dpsPlayers, (p) => acc(p).total);
   if (!total) return "";

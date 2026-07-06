@@ -12,7 +12,12 @@
 // class's highest-defined brand so the brand slot still resolves (matching prior
 // behaviour). effectiveCooldown applies each matching cdrTripod delta.
 // Bindings: root, ref.skills.
-import { snapshotExpr, type ClassSkill, type ClassSkills, type Skill } from "../../_context.ts";
+import {
+  snapshotExpr,
+  type ClassSkill,
+  type ClassSkills,
+  type Skill,
+} from "../../_context.ts";
 
 export default snapshotExpr<void, ClassSkills>(({ root, ref }) => {
   // Snapshots carry the class's INTERNAL name, not the display name (verified
@@ -30,7 +35,8 @@ export default snapshotExpr<void, ClassSkills>(({ root, ref }) => {
   };
   const cls = NAME2ID[String(root.classId).toLowerCase()] ?? root.classId;
   const list = (ref.skills || []).filter((s) => s.classId === cls && s.type);
-  const playerSkill = (id: number) => (root.skills || []).find((k: any) => k.id === id);
+  const playerSkill = (id: number) =>
+    (root.skills || []).find((k: any) => k.id === id);
   const lvl = (id: number) => (playerSkill(id) || {}).level || 0;
   const effCd = (s: Skill) => {
     const tr = (playerSkill(s.id) || {}).tripods || [];
@@ -59,5 +65,10 @@ export default snapshotExpr<void, ClassSkills>(({ root, ref }) => {
     .filter((s) => s.type === "brand" && lvl(s.id) > 0)
     .sort((a, b) => lvl(b.id) - lvl(a.id))
     .map(resolve);
-  return { ap1: pick("ap1"), ap2: pick("ap2"), brand: brands[0] ?? pick("brand"), brands };
+  return {
+    ap1: pick("ap1"),
+    ap2: pick("ap2"),
+    brand: brands[0] ?? pick("brand"),
+    brands,
+  };
 });

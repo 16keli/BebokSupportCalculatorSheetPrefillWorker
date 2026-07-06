@@ -27,16 +27,18 @@ export interface ResolvedSheet extends CopiedSheet {
 
 async function findSheetByName(
   name: string,
-  token: string
+  token: string,
 ): Promise<CopiedSheet | null> {
   const q = `name='${name.replace(/'/g, "\\'")}' and mimeType='application/vnd.google-apps.spreadsheet' and trashed=false`;
   const res = await fetch(
     `${DRIVE_API}/files?q=${encodeURIComponent(q)}&fields=files(id)&pageSize=1`,
-    { headers: { Authorization: `Bearer ${token}` } }
+    { headers: { Authorization: `Bearer ${token}` } },
   );
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`Failed to search Drive for existing sheet (${res.status}): ${text}`);
+    throw new Error(
+      `Failed to search Drive for existing sheet (${res.status}): ${text}`,
+    );
   }
   const data = (await res.json()) as { files?: Array<{ id: string }> };
   const file = data.files?.[0];
@@ -47,7 +49,10 @@ async function findSheetByName(
   };
 }
 
-async function shareWithAnyone(spreadsheetId: string, token: string): Promise<void> {
+async function shareWithAnyone(
+  spreadsheetId: string,
+  token: string,
+): Promise<void> {
   const res = await fetch(`${DRIVE_API}/files/${spreadsheetId}/permissions`, {
     method: "POST",
     headers: {
@@ -58,14 +63,16 @@ async function shareWithAnyone(spreadsheetId: string, token: string): Promise<vo
   });
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`Failed to share sheet with anyone (${res.status}): ${text}`);
+    throw new Error(
+      `Failed to share sheet with anyone (${res.status}): ${text}`,
+    );
   }
 }
 
 export async function getOrCopyTemplateSheet(
   env: GoogleAuthEnv,
   templateIdOrUrl: string,
-  name: string
+  name: string,
 ): Promise<ResolvedSheet> {
   const token = await getAccessToken(env);
 
@@ -86,7 +93,7 @@ export async function getOrCopyTemplateSheet(
     const text = await res.text();
     throw new Error(
       `Failed to copy template sheet (${res.status}): ${text}. ` +
-      `Make sure the template sheet is shared with the service account email.`
+        `Make sure the template sheet is shared with the service account email.`,
     );
   }
 
@@ -103,13 +110,13 @@ export async function appendRows(
   env: GoogleAuthEnv,
   spreadsheetId: string,
   sheetRange: string,
-  rows: string[][]
+  rows: string[][],
 ): Promise<unknown> {
   const token = await getAccessToken(env);
 
   const res = await fetch(
     `${SHEETS_API}/${spreadsheetId}/values/${encodeURIComponent(
-      sheetRange
+      sheetRange,
     )}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,
     {
       method: "POST",
@@ -118,7 +125,7 @@ export async function appendRows(
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ values: rows }),
-    }
+    },
   );
 
   if (!res.ok) {
@@ -132,17 +139,23 @@ export async function appendRows(
 export async function setCellValues(
   env: GoogleAuthEnv,
   spreadsheetId: string,
-  overrides: CellOverride[]
+  overrides: CellOverride[],
 ): Promise<void> {
   if (overrides.length === 0) return;
   const token = await getAccessToken(env);
 
   const res = await fetch(`${SHEETS_API}/${spreadsheetId}/values:batchUpdate`, {
     method: "POST",
-    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
     body: JSON.stringify({
       valueInputOption: "USER_ENTERED",
-      data: overrides.map(({ cell, value }) => ({ range: cell, values: [[value]] })),
+      data: overrides.map(({ cell, value }) => ({
+        range: cell,
+        values: [[value]],
+      })),
     }),
   });
 
@@ -166,12 +179,17 @@ function columnToIndex(letters: string): number {
 
 // Split an (optionally tab-qualified) A1 cell reference into its tab name and
 // 0-based row/column indices. Returns null if it isn't a single A1 cell.
-function parseA1(ref: string): { tab?: string; row: number; col: number } | null {
+function parseA1(
+  ref: string,
+): { tab?: string; row: number; col: number } | null {
   let tab: string | undefined;
   let a1 = ref;
   const bang = ref.lastIndexOf("!");
   if (bang >= 0) {
-    tab = ref.slice(0, bang).replace(/^'(.*)'$/, "$1").replace(/''/g, "'");
+    tab = ref
+      .slice(0, bang)
+      .replace(/^'(.*)'$/, "$1")
+      .replace(/''/g, "'");
     a1 = ref.slice(bang + 1);
   }
   const m = a1.match(/^([A-Za-z]+)(\d+)$/);
@@ -184,7 +202,7 @@ function parseA1(ref: string): { tab?: string; row: number; col: number } | null
 async function applyCellFormats(
   token: string,
   spreadsheetId: string,
-  overrides: CellOverride[]
+  overrides: CellOverride[],
 ): Promise<void> {
   const formatted = overrides.filter((o) => o.format);
   if (formatted.length === 0) return;
@@ -193,17 +211,21 @@ async function applyCellFormats(
   // cells), which the cell-level API requires in place of the A1 tab name.
   const metaRes = await fetch(
     `${SHEETS_API}/${spreadsheetId}?fields=sheets.properties(sheetId,title)`,
-    { headers: { Authorization: `Bearer ${token}` } }
+    { headers: { Authorization: `Bearer ${token}` } },
   );
   if (!metaRes.ok) {
     const text = await metaRes.text();
-    throw new Error(`Failed to read sheet metadata for formatting (${metaRes.status}): ${text}`);
+    throw new Error(
+      `Failed to read sheet metadata for formatting (${metaRes.status}): ${text}`,
+    );
   }
   const meta = (await metaRes.json()) as {
     sheets?: Array<{ properties: { sheetId: number; title: string } }>;
   };
   const sheets = meta.sheets ?? [];
-  const idByTitle = new Map(sheets.map((s) => [s.properties.title, s.properties.sheetId]));
+  const idByTitle = new Map(
+    sheets.map((s) => [s.properties.title, s.properties.sheetId]),
+  );
   const firstSheetId = sheets[0]?.properties.sheetId;
 
   const requests = [];
@@ -230,7 +252,10 @@ async function applyCellFormats(
 
   const res = await fetch(`${SHEETS_API}/${spreadsheetId}:batchUpdate`, {
     method: "POST",
-    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
     body: JSON.stringify({ requests }),
   });
   if (!res.ok) {
@@ -241,12 +266,12 @@ async function applyCellFormats(
 
 export async function getSheetTitles(
   env: GoogleAuthEnv,
-  spreadsheetId: string
+  spreadsheetId: string,
 ): Promise<string[]> {
   const token = await getAccessToken(env);
   const res = await fetch(
     `${SHEETS_API}/${spreadsheetId}?fields=sheets.properties.title`,
-    { headers: { Authorization: `Bearer ${token}` } }
+    { headers: { Authorization: `Bearer ${token}` } },
   );
   if (!res.ok) {
     const text = await res.text();

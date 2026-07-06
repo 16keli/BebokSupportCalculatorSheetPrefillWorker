@@ -130,7 +130,12 @@ export type StreamEvent =
   // Phase 1.5: one per party member as its snapshot is cross-checked against the
   // log. `warnings` lists discrepancy reasons (empty/absent = clean); `error` is
   // set when the snapshot couldn't be fetched (validation is best-effort).
-  | { type: "snapshot-checked"; name: string; warnings?: string[]; error?: string }
+  | {
+      type: "snapshot-checked";
+      name: string;
+      warnings?: string[];
+      error?: string;
+    }
   | { type: "snapshot-check-done" }
   | { type: "prefill-done"; message: string; spreadsheetUrl: string }
   | { type: "error"; message: string };

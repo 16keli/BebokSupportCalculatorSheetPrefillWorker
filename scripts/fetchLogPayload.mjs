@@ -12,7 +12,8 @@ if (!url) {
   process.exit(1);
 }
 
-const dataUrl = url.replace(/\/$/, "") + "/__data.json?x-sveltekit-invalidated=011";
+const dataUrl =
+  url.replace(/\/$/, "") + "/__data.json?x-sveltekit-invalidated=011";
 console.log("Fetching", dataUrl);
 
 const res = await fetch(dataUrl);
@@ -24,11 +25,13 @@ if (!res.ok) {
 const raw = await res.json();
 
 const unflattened = {
-  data: raw.nodes.map((node) => {
-    if (node === null || typeof node !== "object") return null;
-    if (node.type !== "data" || !Array.isArray(node.data)) return null;
-    return unflatten(node.data);
-  }).filter((x) => x !== null),
+  data: raw.nodes
+    .map((node) => {
+      if (node === null || typeof node !== "object") return null;
+      if (node.type !== "data" || !Array.isArray(node.data)) return null;
+      return unflatten(node.data);
+    })
+    .filter((x) => x !== null),
 };
 
 writeFileSync("logPayload.json", JSON.stringify(unflattened, null, 2));

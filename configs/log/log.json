@@ -11,10 +11,7 @@
     "data[1].encounterInfo.encounter",
     "data[1].data.encounterInfo.encounter"
   ],
-  "refData": [
-    "skills",
-    "support_specs"
-  ],
+  "refData": ["skills", "support_specs"],
   "intermediates": [
     {
       "id": "dpsPlayers",
@@ -99,12 +96,7 @@
       "id": "cheersUptime",
       "exprFile": "expr/buffUptime.ts",
       "params": {
-        "ranges": [
-          [
-            605100081,
-            605100084
-          ]
-        ]
+        "ranges": [[605100081, 605100084]]
       },
       "comment": "Cheers uptime: 'Cheers' is the community's (outdated) name for this buff - SkillBuff.json now names it 'Pray', uniqueGroup 605100081 with 4 tiers (ids 605100081-605100084). The old uniqueGroup 605000043 ('Cheers' ids 605000045-605000048) is the prior version's ids and no longer applies."
     },
@@ -112,16 +104,7 @@
       "id": "majorChordWingsUptime",
       "exprFile": "expr/buffUptime.ts",
       "params": {
-        "ranges": [
-          [
-            214020,
-            214028
-          ],
-          [
-            480024,
-            480026
-          ]
-        ]
+        "ranges": [[214020, 214028], [480024, 480026]]
       },
       "comment": "BJ15: bard Major Chord (buff categories 214020-214028) OR valk Wings of Freedom (480024-480026). A party has a single support of one class, so the ranges are mutually exclusive and summing both yields the right cell value regardless of support type."
     },

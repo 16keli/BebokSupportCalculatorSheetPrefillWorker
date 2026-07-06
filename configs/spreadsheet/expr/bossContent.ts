@@ -15,7 +15,9 @@ export default transform(({ value, raw, ref }) => {
   const bosses = new Set<string>();
   raids.slice(start, end + 1).forEach((raid) => {
     const gates = enc[raid] || {};
-    Object.keys(gates).forEach((g) => (gates[g] || []).forEach((b) => bosses.add(b)));
+    Object.keys(gates).forEach((g) =>
+      (gates[g] || []).forEach((b) => bosses.add(b)),
+    );
   });
   return bosses.has(raw as string) ? "Kazeros Raid" : "";
 });

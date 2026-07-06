@@ -16,8 +16,10 @@ import { snapshotExpr, type CombatStats } from "../../_context.ts";
 
 export default snapshotExpr<void, CombatStats>(({ root, input }) => {
   const evo = (root.arkPassive && root.arkPassive.evolution) || [];
-  const specPts = (evo.find((n: any) => n.id === 1010200) || { level: 0 }).level || 0;
-  const swiftPts = (evo.find((n: any) => n.id === 1010400) || { level: 0 }).level || 0;
+  const specPts =
+    (evo.find((n: any) => n.id === 1010200) || { level: 0 }).level || 0;
+  const swiftPts =
+    (evo.find((n: any) => n.id === 1010400) || { level: 0 }).level || 0;
 
   const rosterSpec = Number(input.rosterSpec) || 0;
   const rosterSwift = Number(input.rosterSwift) || 0;

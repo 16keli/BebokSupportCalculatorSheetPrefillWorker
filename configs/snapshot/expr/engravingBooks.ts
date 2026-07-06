@@ -7,10 +7,13 @@
 // Bindings: root.
 import { snapshotExpr } from "../../_context.ts";
 
-export default snapshotExpr<{ engravingId: number }>(({ root }, { engravingId }) => {
-  const e = (root.engravings || []).find((x: any) => x.id === engravingId);
-  if (!e) return "";
-  if (e.grade === "engrave_grade05") return 20;
-  const lvl = e.grade === "engrave_grade04" ? Math.floor((e.progress || 0) / 5) * 5 : 0;
-  return lvl >= 5 ? lvl : "legendary";
-});
+export default snapshotExpr<{ engravingId: number }>(
+  ({ root }, { engravingId }) => {
+    const e = (root.engravings || []).find((x: any) => x.id === engravingId);
+    if (!e) return "";
+    if (e.grade === "engrave_grade05") return 20;
+    const lvl =
+      e.grade === "engrave_grade04" ? Math.floor((e.progress || 0) / 5) * 5 : 0;
+    return lvl >= 5 ? lvl : "legendary";
+  },
+);

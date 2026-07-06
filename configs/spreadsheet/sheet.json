@@ -5,12 +5,7 @@
   "sheetTitle": "",
   "sheetTab": "Sup buff calc v3.81",
   "comment": "Maps target cells (A1 notation) to field ids produced by the snapshot/log datasource configs. The field id is the common key joining sheet <-> datasource. A cell may also carry a `transform`/`transformFile` that reshapes the field's raw value into the written value (sheet-side, so datasources stay canonical and other spreadsheets can render the same data differently); transforms read `refData` below as `ref`.",
-  "refData": [
-    "stat_lines",
-    "encounters",
-    "cores",
-    "core_lines"
-  ],
+  "refData": ["stat_lines", "encounters", "cores", "core_lines"],
   "inputs": [
     {
       "id": "rosterSpec",

@@ -136,7 +136,10 @@ export function stripRoot(kind: DataSourceKind, root: unknown): void {
         // keep only fixed-damage sources (special:true) projected to the three
         // fields partyDamageDealt.ts reads; hyper-awakening damage already lives
         // on damageStats, so it needs no per-skill data.
-        if (isPlainObject(e) && isPlainObject((e as { skills?: unknown }).skills)) {
+        if (
+          isPlainObject(e) &&
+          isPlainObject((e as { skills?: unknown }).skills)
+        ) {
           const src = (e as { skills: Record<string, unknown> }).skills;
           const kept: Record<string, unknown> = {};
           for (const [id, s] of Object.entries(src)) {
@@ -163,12 +166,16 @@ export function stripRoot(kind: DataSourceKind, root: unknown): void {
     // the ap1 share. Everything else - each buff's name/desc/icon and the rest
     // of source - is dropped.
     const eds = root.encounterDamageStats as
-      | { misc?: { partyInfo?: unknown; version?: unknown; region?: unknown }; buffs?: Record<string, unknown> }
+      | {
+          misc?: { partyInfo?: unknown; version?: unknown; region?: unknown };
+          buffs?: Record<string, unknown>;
+        }
       | undefined;
     const partyInfo = eds?.misc?.partyInfo;
     const version = eds?.misc?.version;
     const region = eds?.misc?.region;
-    const buffs: Record<string, { uniqueGroup: unknown; skillId: unknown }> = {};
+    const buffs: Record<string, { uniqueGroup: unknown; skillId: unknown }> =
+      {};
     if (isPlainObject(eds?.buffs)) {
       for (const [id, b] of Object.entries(eds.buffs)) {
         if (isPlainObject(b) && "uniqueGroup" in b) {

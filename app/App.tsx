@@ -15,13 +15,15 @@ import type {
 // Each prefill config lives as a directory under configs/<key>/ with one
 // sheet.json plus a file per datasource (snapshot/log/loadout). Group the
 // per-directory files back into ConfigBundles by their parent directory.
-const configModules = import.meta.glob("../configs/*/*.json", { eager: true }) as Record<
-  string,
-  { default: SheetConfig | DataSourceConfig }
->;
+const configModules = import.meta.glob("../configs/*/*.json", {
+  eager: true,
+}) as Record<string, { default: SheetConfig | DataSourceConfig }>;
 
 function assembleBundles(): ConfigBundle[] {
-  const byDir = new Map<string, { sheet?: SheetConfig; sources: DataSourceConfig[] }>();
+  const byDir = new Map<
+    string,
+    { sheet?: SheetConfig; sources: DataSourceConfig[] }
+  >();
   for (const [path, mod] of Object.entries(configModules)) {
     const dir = path.slice(0, path.lastIndexOf("/"));
     const entry = byDir.get(dir) ?? { sources: [] };
@@ -34,7 +36,9 @@ function assembleBundles(): ConfigBundle[] {
     byDir.set(dir, entry);
   }
   return [...byDir.values()]
-    .filter((b): b is { sheet: SheetConfig; sources: DataSourceConfig[] } => Boolean(b.sheet))
+    .filter((b): b is { sheet: SheetConfig; sources: DataSourceConfig[] } =>
+      Boolean(b.sheet),
+    )
     .map((b) => ({ key: b.sheet.key, sheet: b.sheet, sources: b.sources }));
 }
 
@@ -76,12 +80,14 @@ export default function App() {
 
   function validate(): string | null {
     if (!bundle) return "No config bundle is loaded.";
-    if (!bundle.sheet.templateSheet.trim()) return "Bundle is missing a template sheet.";
+    if (!bundle.sheet.templateSheet.trim())
+      return "Bundle is missing a template sheet.";
     if (!url.trim()) return "Add a log URL.";
     if (!URL_PATTERN.test(url.trim())) {
       return "URL must match https://lostark.bible/logs/<id> (e.g. https://lostark.bible/logs/4Lg6pvC).";
     }
-    if (bundle.sheet.cells.length === 0) return "This config has no cell bindings.";
+    if (bundle.sheet.cells.length === 0)
+      return "This config has no cell bindings.";
     return null;
   }
 
@@ -141,7 +147,9 @@ export default function App() {
             log(evt.message, "err");
           }
         },
-        bypassToken.trim() ? { "X-Bypass-Token": bypassToken.trim() } : undefined
+        bypassToken.trim()
+          ? { "X-Bypass-Token": bypassToken.trim() }
+          : undefined,
       );
     } catch (err) {
       log(err instanceof ApiError ? err.message : "Connection error", "err");
@@ -155,7 +163,8 @@ export default function App() {
       <header>
         <h1>Calculator Prefiller</h1>
         <div className="sub">
-          Paste a lostark.bible log URL to prefill your spreadsheet automatically.
+          Paste a lostark.bible log URL to prefill your spreadsheet
+          automatically.
         </div>
       </header>
 

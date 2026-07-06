@@ -16,11 +16,15 @@ const fixedDamage = (p: any): number =>
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   Object.values(p.skills || {}).reduce(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (a: number, s: any) => a + (s.special && !s.isHyperAwakening ? s.totalDamage || 0 : 0),
-    0
+    (a: number, s: any) =>
+      a + (s.special && !s.isHyperAwakening ? s.totalDamage || 0 : 0),
+    0,
   );
 
 export default logExpr(({ $, sum }) =>
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  sum($.dpsPlayers, (p: any) => (p.damageStats?.damageDealt || 0) - fixedDamage(p))
+  sum(
+    $.dpsPlayers,
+    (p: any) => (p.damageStats?.damageDealt || 0) - fixedDamage(p),
+  ),
 );

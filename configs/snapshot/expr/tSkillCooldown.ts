@@ -5,7 +5,12 @@
 import { snapshotExpr } from "../../_context.ts";
 
 export default snapshotExpr(({ root, ref }) => {
-  const TID: Record<string, number> = { paladin: 36260, valkyrie: 48510, bard: 21300, artist: 31950 };
+  const TID: Record<string, number> = {
+    paladin: 36260,
+    valkyrie: 48510,
+    bard: 21300,
+    artist: 31950,
+  };
   const id = TID[String(root.classId).toLowerCase()];
   if (id == null) return "";
   const s = (ref.skills || []).find((k) => k.id === id);

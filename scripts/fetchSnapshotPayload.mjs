@@ -8,9 +8,13 @@ import { unflatten } from "devalue";
 
 let arg = process.argv[2];
 if (!arg) {
-  console.error("Usage: node scripts/fetchSnapshotPayload.mjs <snapshot-url-or-hash>");
+  console.error(
+    "Usage: node scripts/fetchSnapshotPayload.mjs <snapshot-url-or-hash>",
+  );
   console.error("  Hash example:  v3/c402fa984d30f95dc");
-  console.error("  URL example:   https://lostark.bible/character/snapshot/v3/c402fa984d30f95dc");
+  console.error(
+    "  URL example:   https://lostark.bible/character/snapshot/v3/c402fa984d30f95dc",
+  );
   process.exit(1);
 }
 
@@ -19,7 +23,8 @@ if (!arg.startsWith("http")) {
   arg = `https://lostark.bible/character/snapshot/${arg}`;
 }
 
-const dataUrl = arg.replace(/\/$/, "") + "/__data.json?x-sveltekit-invalidated=011";
+const dataUrl =
+  arg.replace(/\/$/, "") + "/__data.json?x-sveltekit-invalidated=011";
 console.log("Fetching", dataUrl);
 
 const res = await fetch(dataUrl);
@@ -31,11 +36,13 @@ if (!res.ok) {
 const raw = await res.json();
 
 const unflattened = {
-  data: raw.nodes.map((node) => {
-    if (node === null || typeof node !== "object") return null;
-    if (node.type !== "data" || !Array.isArray(node.data)) return null;
-    return unflatten(node.data);
-  }).filter((x) => x !== null),
+  data: raw.nodes
+    .map((node) => {
+      if (node === null || typeof node !== "object") return null;
+      if (node.type !== "data" || !Array.isArray(node.data)) return null;
+      return unflatten(node.data);
+    })
+    .filter((x) => x !== null),
 };
 
 writeFileSync("snapshotPayload.json", JSON.stringify(unflattened, null, 2));
@@ -62,4 +69,6 @@ for (const g of gems) {
     allTypes.add(e.type);
   }
 }
-console.log(`\nAll effect types present: [${[...allTypes].sort((a, b) => a - b).join(", ")}]`);
+console.log(
+  `\nAll effect types present: [${[...allTypes].sort((a, b) => a - b).join(", ")}]`,
+);

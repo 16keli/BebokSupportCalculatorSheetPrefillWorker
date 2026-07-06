@@ -9,5 +9,9 @@ export default snapshotExpr<void, StoneEngraving[]>(({ $ }) => {
   if (!s) return [];
   const TH = [6, 7, 9, 10];
   const lvl = (n: number) => TH.filter((t) => (n || 0) >= t).length;
-  return (s.data.engravings || []).map((e: any) => ({ id: e.id, nodes: e.nodes, level: lvl(e.nodes) }));
+  return (s.data.engravings || []).map((e: any) => ({
+    id: e.id,
+    nodes: e.nodes,
+    level: lvl(e.nodes),
+  }));
 });

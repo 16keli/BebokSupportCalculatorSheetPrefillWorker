@@ -56,11 +56,15 @@ export function satisfiesVersion(actual: string, constraint: string): boolean {
     const op = m[1] ?? "=";
     const cmp = compareVersions(actual, m[2]!);
     const ok =
-      op === "<=" ? cmp <= 0 :
-      op === "<" ? cmp < 0 :
-      op === ">=" ? cmp >= 0 :
-      op === ">" ? cmp > 0 :
-      cmp === 0;
+      op === "<="
+        ? cmp <= 0
+        : op === "<"
+          ? cmp < 0
+          : op === ">="
+            ? cmp >= 0
+            : op === ">"
+              ? cmp > 0
+              : cmp === 0;
     if (!ok) return false;
   }
   return true;
@@ -69,20 +73,27 @@ export function satisfiesVersion(actual: string, constraint: string): boolean {
 // Read a dotted path (e.g. "encounterDamageStats.misc.version") off an object,
 // returning the value as a string, or undefined if the path is absent / the leaf
 // isn't a string/number.
-export function readVersionPath(root: unknown, path: string): string | undefined {
+export function readVersionPath(
+  root: unknown,
+  path: string,
+): string | undefined {
   let cur: unknown = root;
   for (const key of path.split(".")) {
     if (cur == null || typeof cur !== "object") return undefined;
     cur = (cur as Record<string, unknown>)[key];
   }
-  return typeof cur === "string" || typeof cur === "number" ? String(cur) : undefined;
+  return typeof cur === "string" || typeof cur === "number"
+    ? String(cur)
+    : undefined;
 }
 
 // The bible data version is encoded as the loadoutHash prefix, e.g.
 // "v3/5752fa..." -> "v3". This is the version signal for the snapshot (and
 // loadout) datasources - their payload bodies carry no version field, but the
 // hash used to fetch them does. Returns undefined for a hash with no prefix.
-export function versionFromLoadoutHash(loadoutHash: string): string | undefined {
+export function versionFromLoadoutHash(
+  loadoutHash: string,
+): string | undefined {
   const i = loadoutHash.indexOf("/");
   return i > 0 ? loadoutHash.slice(0, i) : undefined;
 }
@@ -130,13 +141,17 @@ export interface SourceSelection {
 export function selectSourceForPayload(
   variants: CompiledSource[],
   payload: unknown,
-  actualOverride?: string
+  actualOverride?: string,
 ): SourceSelection {
-  if (variants.length === 0) throw new Error("selectSourceForPayload: no variants");
+  if (variants.length === 0)
+    throw new Error("selectSourceForPayload: no variants");
 
   // Latest-first ordering by the max version each variant supports.
   const ordered = [...variants].sort((a, b) =>
-    compareVersions(constraintMaxVersion(b.version ?? undefined), constraintMaxVersion(a.version ?? undefined))
+    compareVersions(
+      constraintMaxVersion(b.version ?? undefined),
+      constraintMaxVersion(a.version ?? undefined),
+    ),
   );
 
   const versioned = variants.filter((v) => v.version?.supported);
@@ -148,7 +163,10 @@ export function selectSourceForPayload(
     // variants of a kind share the same root/path).
     const pathVariant = variants.find((v) => v.version?.path);
     actual = pathVariant
-      ? readVersionPath(resolveRoot(payload, pathVariant), pathVariant.version!.path!)
+      ? readVersionPath(
+          resolveRoot(payload, pathVariant),
+          pathVariant.version!.path!,
+        )
       : undefined;
   }
 
@@ -157,11 +175,17 @@ export function selectSourceForPayload(
     return { source: ordered[0]! };
   }
 
-  const match = ordered.find((v) => v.version?.supported && satisfiesVersion(actual!, v.version.supported));
+  const match = ordered.find(
+    (v) =>
+      v.version?.supported && satisfiesVersion(actual!, v.version.supported),
+  );
   if (match) return { source: match, actual };
 
   const fallback = ordered[0]!;
-  const supportedList = variants.map((v) => v.version?.supported).filter(Boolean).join(", ");
+  const supportedList = variants
+    .map((v) => v.version?.supported)
+    .filter(Boolean)
+    .join(", ");
   return {
     source: fallback,
     actual,

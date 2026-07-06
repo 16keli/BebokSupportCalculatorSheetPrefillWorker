@@ -54,7 +54,7 @@ export function useRateLimitQuota(): QuotaSnapshot | null {
       reconnectTimerRef.current = setTimeout(() => {
         reconnectDelayRef.current = Math.min(
           reconnectDelayRef.current * 2,
-          MAX_RECONNECT_DELAY_MS
+          MAX_RECONNECT_DELAY_MS,
         );
         connect();
       }, reconnectDelayRef.current);

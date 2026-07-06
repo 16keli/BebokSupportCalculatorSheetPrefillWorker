@@ -7,6 +7,7 @@
 import { logExpr } from "../../_context.ts";
 
 export default logExpr<{ nodeId: number }>(({ member }, { nodeId }) => {
-  const e = (member && member.arkPassiveData && member.arkPassiveData.evolution) || [];
+  const e =
+    (member && member.arkPassiveData && member.arkPassiveData.evolution) || [];
   return (e.find((n: any) => n.id === nodeId) || { lv: 0 }).lv || 0;
 });

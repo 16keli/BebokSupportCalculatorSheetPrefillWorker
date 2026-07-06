@@ -39,9 +39,13 @@ export default snapshotExpr<void, GemUnit[]>(({ root, ref }) => {
     for (const e of g.effects || []) {
       let key: string | null = null;
       let kind: "dmg" | "cdr" | null = null;
-      if (e.type === 5) { key = "s:" + e.id; kind = "dmg"; }
-      else if (e.type === 27) { key = "s:" + e.id; kind = "cdr"; }
-      else if (e.type === 34 || e.type === 35) {
+      if (e.type === 5) {
+        key = "s:" + e.id;
+        kind = "dmg";
+      } else if (e.type === 27) {
+        key = "s:" + e.id;
+        kind = "cdr";
+      } else if (e.type === 34 || e.type === 35) {
         const skills = groups[e.id];
         if (!skills) continue; // unknown group - not a skill gem we model
         key = "g:" + [...skills].sort((a, b) => a - b).join(",");

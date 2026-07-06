@@ -27,7 +27,10 @@ export function QuotaIndicator() {
     setReceivedAt(Date.now());
   }, [quota?.usedInWindow, quota?.remaining]);
 
-  const countdownSeconds = useCountdown(quota?.msUntilNextSlot ?? 0, receivedAt);
+  const countdownSeconds = useCountdown(
+    quota?.msUntilNextSlot ?? 0,
+    receivedAt,
+  );
 
   if (!quota) {
     return (
@@ -47,14 +50,24 @@ export function QuotaIndicator() {
   else level = "ok";
 
   return (
-    <div className={`quota-indicator quota-${level}`} role="status" aria-live="polite">
+    <div
+      className={`quota-indicator quota-${level}`}
+      role="status"
+      aria-live="polite"
+    >
       <div className="quota-bar-track">
-        <div className="quota-bar-fill" style={{ width: `${Math.min(100, fraction * 100)}%` }} />
+        <div
+          className="quota-bar-fill"
+          style={{ width: `${Math.min(100, fraction * 100)}%` }}
+        />
       </div>
       <span className="quota-label">
         {remaining} / {limit} available
         {level === "exhausted" && countdownSeconds > 0 ? (
-          <span className="quota-countdown"> - next slot in {countdownSeconds}s</span>
+          <span className="quota-countdown">
+            {" "}
+            - next slot in {countdownSeconds}s
+          </span>
         ) : null}
       </span>
     </div>
