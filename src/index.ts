@@ -148,7 +148,7 @@ async function handleLogPrefillParty(request: Request, env: Env): Promise<Respon
     method: "POST",
     body: JSON.stringify({ method: "logPrefillParty", payload: body }),
   });
-  return new Response(doResponse.body, { status: doResponse.status, headers: doResponse.headers });
+  return pumpDoStream(doResponse);
 }
 
 // Phase 1.5: cross-check the selected party's snapshots against the log so
@@ -178,7 +178,7 @@ async function handleValidateParty(request: Request, env: Env): Promise<Response
       payload: { ...body, bucket: scrapeBucket(request), bypass },
     }),
   });
-  return new Response(doResponse.body, { status: doResponse.status, headers: doResponse.headers });
+  return pumpDoStream(doResponse);
 }
 
 function getJobStub(env: Env, jobId: string) {
@@ -257,6 +257,21 @@ function formatRateLimitMessage(result: RateLimitResult, requested: number): str
 }
 
 function prependJobIdEvent(doResponse: Response, jobId: string): Response {
+  const jobEvent: StreamEvent = { type: "job", jobId };
+  return pumpDoStream(doResponse, jobEvent);
+}
+
+// Streams a Durable Object's NDJSON response back to the client by actively
+// reading it in a Worker-side loop, optionally prepending one event.
+//
+// This is NOT just cosmetic framing: the DO produces its stream from a detached
+// background task (see scrapeJob.ts) that keeps running only while its response
+// body is being consumed. Returning `doResponse.body` by plain passthrough does
+// not reliably drive that consumption in production - the DO gets suspended
+// right after returning the (still-empty) stream head, so its snapshot renders
+// never run. Draining it here, exactly as the initial-scrape path already did,
+// keeps the DO's background work alive to completion.
+function pumpDoStream(doResponse: Response, prefixEvent?: StreamEvent): Response {
   if (!doResponse.ok || !doResponse.body) {
     return new Response(doResponse.body, {
       status: doResponse.status,
@@ -270,8 +285,9 @@ function prependJobIdEvent(doResponse: Response, jobId: string): Response {
 
   (async () => {
     try {
-      const jobEvent: StreamEvent = { type: "job", jobId };
-      await writer.write(encoder.encode(JSON.stringify(jobEvent) + "\n"));
+      if (prefixEvent) {
+        await writer.write(encoder.encode(JSON.stringify(prefixEvent) + "\n"));
+      }
       const reader = doResponse.body!.getReader();
       while (true) {
         const { done, value } = await reader.read();
