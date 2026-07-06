@@ -1,5 +1,5 @@
 // app/components/PrefillCard.tsx
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { streamRequest, ApiError } from "../api";
 import type { AdvancedInput, PartyMemberInfo, PrefillCardState, SupportPreview } from "../types";
 
@@ -23,6 +23,7 @@ function PartyMembers({
   players,
   validation,
   reserveBadge,
+  onRetry,
 }: {
   players: PartyMemberInfo[];
   validation?: Record<string, MemberValidation>;
@@ -30,6 +31,9 @@ function PartyMembers({
   // validation state yet) so rows don't reflow as badges stream in or as the
   // user switches between parties in the multi-party picker.
   reserveBadge?: boolean;
+  // Re-run validation for this party (wired only for the selected party); makes
+  // a final-error badge clickable.
+  onRetry?: () => void;
 }) {
   return (
     <div className="party-members">
@@ -46,7 +50,9 @@ function PartyMembers({
             />
             {p.combatPower.toFixed(2)}
           </span>
-          {(validation?.[p.name] || reserveBadge) && <MemberBadge v={validation?.[p.name]} />}
+          {(validation?.[p.name] || reserveBadge) && (
+            <MemberBadge v={validation?.[p.name]} onRetry={onRetry} />
+          )}
         </div>
       ))}
     </div>
@@ -55,10 +61,12 @@ function PartyMembers({
 
 // Small per-member snapshot-validation indicator. Neutral while checking, green
 // when the snapshot matches the log, amber (with the reasons in its tooltip)
-// when it disagrees, grey when it couldn't be validated.
-function MemberBadge({ v }: { v?: MemberValidation }) {
+// when it disagrees, grey when it couldn't be validated. A final "error" (after
+// auto-retries are exhausted) is clickable to retry manually.
+function MemberBadge({ v, onRetry }: { v?: MemberValidation; onRetry?: () => void }) {
   const meta: Record<MemberValidation["state"], { cls: string; icon: string; title: string }> = {
     checking: { cls: "checking", icon: "…", title: "Checking snapshot against the log…" },
+    retrying: { cls: "retrying", icon: "…", title: "Validation was busy — retrying…" },
     ok: { cls: "ok", icon: "✓", title: "Snapshot matches the log" },
     warn: { cls: "warn", icon: "⚠", title: "Snapshot may be inaccurate" },
     error: { cls: "error", icon: "?", title: "Couldn't validate this snapshot" },
@@ -67,6 +75,32 @@ function MemberBadge({ v }: { v?: MemberValidation }) {
   // placeholder that reserves the same space so the row layout stays stable.
   if (!v) return <span className="member-badge placeholder" aria-hidden="true" />;
   const m = meta[v.state];
+  // Final error with a retry handler: make it an actionable control. Uses a
+  // span (not <button>) with stopPropagation so it nests validly inside the
+  // party-select button in the multi-party picker without triggering re-select.
+  if (v.state === "error" && onRetry) {
+    return (
+      <span
+        className="member-badge error clickable"
+        role="button"
+        tabIndex={0}
+        title="Couldn't validate — click to retry"
+        onClick={(e) => {
+          e.stopPropagation();
+          onRetry();
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.stopPropagation();
+            e.preventDefault();
+            onRetry();
+          }
+        }}
+      >
+        ↻
+      </span>
+    );
+  }
   return (
     <span className={`member-badge ${m.cls}`} title={m.title}>
       {m.icon}
@@ -94,6 +128,14 @@ function seedInputs(defs: AdvancedInput[]): Record<string, string> {
 
 // Sentinel value for the uptime dropdown's whole-party option.
 const AGGREGATE = "aggregate";
+
+// Validation is best-effort and can fail transiently when the shared Browser
+// Rendering session budget is momentarily exhausted (a concurrent party's pass).
+// We auto-retry ONCE, after a delay long enough for the per-minute browser cap to
+// recover, then fall back to a manual (clickable) retry so a persistently
+// saturated account doesn't spin forever. Total passes = MAX_VALIDATION_ATTEMPTS.
+const MAX_VALIDATION_ATTEMPTS = 2;
+const VALIDATION_RETRY_DELAY_MS = 25_000;
 
 // Format of a lostark.bible character link the user can paste to override gear
 // (mirrors CHARACTER_URL_PATTERN in src/scrapeJob.ts). Region 2-4 letters, name
@@ -331,8 +373,10 @@ interface PartyFormState {
   supportGearLink?: string;
   dpsGearLink?: string;
   // Phase 1.5 snapshot<->log cross-check, streamed per member once this party is
-  // selected. `validationStarted` guards the one-shot fetch per party key.
-  validationStarted?: boolean;
+  // selected. `validationAttempts` counts passes (0 = never run): it both guards
+  // the one-shot auto-fetch on selection and caps auto-retries after a browser
+  // rate-limit degradation (see runValidation / MAX_VALIDATION_ATTEMPTS).
+  validationAttempts?: number;
   validation?: Record<string, MemberValidation>;
   done: boolean;
   status: { text: string; tag: "info" | "ok" | "err" } | null;
@@ -341,7 +385,7 @@ interface PartyFormState {
 // Per-member result of the up-front snapshot cross-check (see validateParty).
 // "checking" until its event arrives; "warn" carries the discrepancy reasons.
 interface MemberValidation {
-  state: "checking" | "ok" | "warn" | "error";
+  state: "checking" | "retrying" | "ok" | "warn" | "error";
   warnings?: string[];
 }
 
@@ -360,6 +404,16 @@ export function PrefillCard({ card, onDone }: PrefillCardProps) {
   // /api/log-prefill-party request in flight across the whole card at a time).
   const [partyState, setPartyState] = useState<Record<string, PartyFormState>>({});
   const [submitting, setSubmitting] = useState(false);
+
+  // Pending auto-retry timers, keyed by party, so they can be cleared on unmount
+  // (and superseded by a manual retry). Not state - changing them never re-renders.
+  const retryTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  useEffect(() => {
+    const timers = retryTimers.current;
+    return () => {
+      for (const t of Object.values(timers)) clearTimeout(t);
+    };
+  }, []);
 
   function defaultPartyState(): PartyFormState {
     return { inputs: seedInputs(inputsDefs), petTouched: false, done: false, status: null };
@@ -442,12 +496,34 @@ export function PrefillCard({ card, onDone }: PrefillCardProps) {
   }, []);
 
   // Phase 1.5: cross-check the selected party's snapshots against the log so
-  // discrepancies surface during configuration. Streams one result per member;
-  // fired once per party key (guarded by validationStarted).
-  async function runValidation(partyKey: string) {
-    const seed: Record<string, MemberValidation> = {};
-    for (const m of playersForKey(partyKey)) seed[m.name] = { state: "checking" };
-    updateParty(partyKey, { validationStarted: true, validation: seed });
+  // discrepancies surface during configuration. Streams one result per member.
+  // `attempt` is the 1-based pass number; a pass that leaves any member errored
+  // (e.g. the browser budget was momentarily exhausted) auto-retries once after a
+  // delay, then leaves a clickable "error" badge for manual retry.
+  async function runValidation(partyKey: string, attempt = 1) {
+    // A fresh attempt supersedes any pending auto-retry timer for this party.
+    if (retryTimers.current[partyKey]) {
+      clearTimeout(retryTimers.current[partyKey]);
+      delete retryTimers.current[partyKey];
+    }
+    const players = playersForKey(partyKey);
+    // Seed: on the first pass everything is "checking"; on a retry only reset the
+    // members that failed (to "retrying") so already-resolved rows don't flicker.
+    updateParty(partyKey, (s) => {
+      const prev = s.validation ?? {};
+      const seed: Record<string, MemberValidation> = { ...prev };
+      for (const m of players) {
+        if (attempt === 1) seed[m.name] = { state: "checking" };
+        else if (prev[m.name]?.state === "error" || !prev[m.name])
+          seed[m.name] = { state: "retrying" };
+      }
+      return { validationAttempts: attempt, validation: seed };
+    });
+
+    // Track the final per-member outcome locally so we can decide on a retry
+    // without racing React's async state.
+    const latest: Record<string, MemberValidation> = {};
+    let streamError = false;
     try {
       await streamRequest(
         "/api/log-prefill-validate",
@@ -459,12 +535,14 @@ export function PrefillCard({ card, onDone }: PrefillCardProps) {
               : evt.warnings && evt.warnings.length
                 ? { state: "warn", warnings: evt.warnings }
                 : { state: "ok" };
+            latest[evt.name] = result;
             updateParty(partyKey, (s) => ({
               validation: { ...s.validation, [evt.name]: result },
             }));
           } else if (evt.type === "error") {
             // A stream-level error (e.g. rate limit): mark the still-pending
             // members as unvalidated rather than leaving them spinning.
+            streamError = true;
             updateParty(partyKey, (s) => ({
               validation: markPendingErrored(s.validation),
             }));
@@ -472,14 +550,42 @@ export function PrefillCard({ card, onDone }: PrefillCardProps) {
         }
       );
     } catch {
+      streamError = true;
       updateParty(partyKey, (s) => ({ validation: markPendingErrored(s.validation) }));
     }
+
+    // Any member unresolved (errored, or never reported due to a stream error)?
+    const hasErrors =
+      streamError ||
+      players.some((m) => latest[m.name] === undefined || latest[m.name]!.state === "error");
+    if (hasErrors && attempt < MAX_VALIDATION_ATTEMPTS) {
+      // Show the failed members as "retrying" during the wait so they don't read
+      // as final, then re-run after the browser cap has had time to recover.
+      updateParty(partyKey, (s) => {
+        const next = { ...(s.validation ?? {}) };
+        for (const k of Object.keys(next)) {
+          if (next[k]?.state === "error") next[k] = { state: "retrying" };
+        }
+        return { validation: next };
+      });
+      retryTimers.current[partyKey] = setTimeout(() => {
+        delete retryTimers.current[partyKey];
+        runValidation(partyKey, attempt + 1);
+      }, VALIDATION_RETRY_DELAY_MS);
+    }
+  }
+
+  // Manual retry (from a clicked error badge): a one-off pass that schedules no
+  // further auto-retry (attempt is already at the cap), so the user stays in
+  // control if the account is persistently saturated.
+  function retryValidation(partyKey: string) {
+    runValidation(partyKey, MAX_VALIDATION_ATTEMPTS);
   }
 
   // Trigger validation once whenever a (non-null) party becomes selected.
   useEffect(() => {
     if (!selectedKey) return;
-    if (partyState[selectedKey]?.validationStarted) return;
+    if (partyState[selectedKey]?.validationAttempts) return;
     runValidation(selectedKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedKey]);
@@ -673,6 +779,7 @@ export function PrefillCard({ card, onDone }: PrefillCardProps) {
                     players={party.players}
                     validation={selectedKey === key ? current.validation : undefined}
                     reserveBadge={card.parties.length > 1}
+                    onRetry={selectedKey === key ? () => retryValidation(key) : undefined}
                   />
                 </button>
               );
@@ -683,7 +790,11 @@ export function PrefillCard({ card, onDone }: PrefillCardProps) {
         card.parties.length > 0 && (
           <div className="pick-card-summary">
             <div>Party {card.parties[0]!.partyNumber + 1}</div>
-            <PartyMembers players={card.parties[0]!.players} validation={current.validation} />
+            <PartyMembers
+              players={card.parties[0]!.players}
+              validation={current.validation}
+              onRetry={selectedKey ? () => retryValidation(selectedKey) : undefined}
+            />
           </div>
         )
       )}
