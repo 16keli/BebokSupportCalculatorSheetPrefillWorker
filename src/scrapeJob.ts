@@ -537,6 +537,10 @@ export class ScrapeJob extends DurableObject<Env> {
 
         // Fetch sequentially: each is a full headless-browser render (unless
         // cached), and the Browser Rendering binding limits concurrent sessions.
+        console.log(
+          `[validateParty] partyKey=${partyKey} entities=${partyEntities.length} ` +
+            `fetchable=${fetchable.length} missCount=${missCount} variants=${snapshotVariants.length}`
+        );
         const results: Record<string, { warnings?: string[]; error?: string }> = {};
         for (const entity of partyEntities) {
           if (!LOADOUT_HASH_PATTERN.test(entity.loadoutHash)) {
@@ -546,6 +550,7 @@ export class ScrapeJob extends DurableObject<Env> {
             continue;
           }
           const url = `https://lostark.bible/character/snapshot/${entity.loadoutHash}`;
+          console.log(`[validateParty] fetching snapshot for ${entity.name} (${url})`);
           try {
             const root = await fetchSnapshotRoot(
               this.env.MYBROWSER,
@@ -556,16 +561,26 @@ export class ScrapeJob extends DurableObject<Env> {
             );
             const warnings = compareSnapshotToLog(root, meta.logFingerprints[entity.name]);
             results[entity.name] = { warnings };
+            console.log(
+              `[validateParty] ok ${entity.name} warnings=${JSON.stringify(warnings)}`
+            );
             send({ type: "snapshot-checked", name: entity.name, warnings });
           } catch (e) {
             const error = (e as Error).message;
+            console.error(
+              `[validateParty] FAILED ${entity.name}: ${error}\n${(e as Error).stack ?? ""}`
+            );
             results[entity.name] = { error };
             send({ type: "snapshot-checked", name: entity.name, error });
           }
         }
         await this.ctx.storage.put(cacheKey, results);
+        console.log(`[validateParty] done partyKey=${partyKey} results=${JSON.stringify(results)}`);
         send({ type: "snapshot-check-done" });
       } catch (err) {
+        console.error(
+          `[validateParty] fatal: ${(err as Error).message}\n${(err as Error).stack ?? ""}`
+        );
         send({ type: "error", message: (err as Error).message });
       } finally {
         writer.close();
