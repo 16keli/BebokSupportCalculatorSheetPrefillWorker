@@ -83,7 +83,7 @@ Swift | 18 |
 Main Stat | 11 | Applies to all main stat types
 Crit Dmg | 11091 - 11093 | High to low
 Crit Rate | 11071 - 11073 | High to low
-Def | 605100171 - 605100173 | High to low
+Def | 11061 - 11063 | High to low
 Cheers | 11081 - 11083 | High to low
 Ally Atk | 0 | Value is strength in percent (times 100)
 Ally Dmg | 16000001 | Value is strength in percent (times 100)

@@ -55294,13 +55294,13 @@ const REFS: Record<string, unknown> = {
   "11083": {
     "text": "Targets that have a protective effect are granted Outgoing Damage +0.9% for 5s. Ally Atk. Power Enhancement +2.0%."
   },
-  "605100171": {
+  "11061": {
     "text": "On hit, target's Defense -2.5% for 8s. Ally Atk. Power Enhancement +3.0%."
   },
-  "605100172": {
+  "11062": {
     "text": "On hit, target's Defense -2.1% for 8s. Ally Atk. Power Enhancement +2.5%."
   },
-  "605100173": {
+  "11063": {
     "text": "On hit, target's Defense -1.8% for 8s. Ally Atk. Power Enhancement +2.0%."
   },
   "11111": {
