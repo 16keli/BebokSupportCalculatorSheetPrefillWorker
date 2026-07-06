@@ -512,16 +512,19 @@ export class ScrapeJob extends DurableObject<Env> {
         // in the D1 cache (each miss is a real headless-browser render). Cache
         // hits and the dedupe short-circuit above cost nothing, so a re-checked
         // or already-warmed party consumes no quota. Skipped for valid bypass.
-        const missCount = (
-          await Promise.all(
-            fetchable.map((e) =>
-              hasCachedPayload(
+        const cachedByName = new Map<string, boolean>();
+        await Promise.all(
+          fetchable.map(async (e) => {
+            cachedByName.set(
+              e.name,
+              await hasCachedPayload(
                 this.env.bebok_scrape_cache,
                 dataJsonUrl(`https://lostark.bible/character/snapshot/${e.loadoutHash}`)
               )
-            )
-          )
-        ).filter((hit) => !hit).length;
+            );
+          })
+        );
+        const missCount = [...cachedByName.values()].filter((hit) => !hit).length;
         if (missCount > 0 && bucket && !bypass) {
           const rl = await this.consumeRateLimit(bucket, missCount);
           if (!rl.allowed) {
@@ -547,15 +550,32 @@ export class ScrapeJob extends DurableObject<Env> {
         // Reuse ONE browser for every member's snapshot. Each puppeteer.launch
         // counts against Browser Rendering's new-browser-per-minute limit, so a
         // launch-per-member loop 429s after a couple; one shared session renders
-        // all of them. Launched lazily (only if there's a cache miss to render)
-        // and always closed afterwards.
+        // all of them (opened lazily, only when there's a cache miss to render).
+        // If even the one browser can't be acquired (limit hit by a concurrent
+        // pass), validation degrades to best-effort: cache HITS still validate
+        // (they need no browser), and uncached members are left for phase 2 to
+        // fetch - NOT a hard failure of the whole party.
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let sharedBrowser: any;
+        if (missCount > 0) {
+          try {
+            sharedBrowser = await acquireBrowser(this.env.MYBROWSER);
+          } catch (e) {
+            console.error(`[validateParty] browser unavailable: ${(e as Error).message}`);
+          }
+        }
         try {
-          if (missCount > 0) sharedBrowser = await acquireBrowser(this.env.MYBROWSER);
           for (const entity of partyEntities) {
             if (!LOADOUT_HASH_PATTERN.test(entity.loadoutHash)) {
               const error = "no character data";
+              results[entity.name] = { error };
+              send({ type: "snapshot-checked", name: entity.name, error });
+              continue;
+            }
+            // Uncached and no browser to render it: skip (phase 2 will fetch it).
+            // Send an error badge but do NOT persist it, so re-selecting retries.
+            if (!cachedByName.get(entity.name) && !sharedBrowser) {
+              const error = "validation unavailable (browser busy) - try again";
               results[entity.name] = { error };
               send({ type: "snapshot-checked", name: entity.name, error });
               continue;
@@ -589,8 +609,16 @@ export class ScrapeJob extends DurableObject<Env> {
         } finally {
           if (sharedBrowser) await releaseBrowser(sharedBrowser);
         }
-        await this.ctx.storage.put(cacheKey, results);
-        console.log(`[validateParty] done partyKey=${partyKey} results=${JSON.stringify(results)}`);
+        // Persist for dedupe only when everything resolved cleanly. If any member
+        // errored (e.g. a transient browser-busy skip), leave the cache unset so
+        // re-selecting the party re-runs and retries the missing ones - already
+        // successful members are D1-cached, so the retry is cheap for them.
+        const anyErrors = Object.values(results).some((r) => r.error);
+        if (!anyErrors) await this.ctx.storage.put(cacheKey, results);
+        console.log(
+          `[validateParty] done partyKey=${partyKey} persisted=${!anyErrors} ` +
+            `results=${JSON.stringify(results)}`
+        );
         send({ type: "snapshot-check-done" });
       } catch (err) {
         console.error(

@@ -145,23 +145,38 @@ const BROWSER_KEEP_ALIVE_MS = 60_000;
 // session when one is free (does NOT count against the new-browser limit), and
 // only launches a fresh one - with keep_alive so it survives for reuse - when
 // none are available. The caller MUST releaseBrowser() when done.
+//
+// Retries on the new-browser 429: a session another pass JUST released takes a
+// moment to become reconnectable, and the per-minute launch budget recovers over
+// time - so when two passes run back-to-back, waiting a couple seconds lets the
+// second reconnect to the first's freed session instead of launching (and 429ing).
 export async function acquireBrowser(browserBinding: BrowserBinding): Promise<unknown> {
-  try {
-    const sessions = await puppeteer.sessions(browserBinding);
-    // A session with no connectionId has no active puppeteer connection - free
-    // to reconnect to. Try each (another request may grab one first).
-    const free = sessions.filter((s: { connectionId?: string }) => !s.connectionId);
-    for (const s of free as { sessionId: string }[]) {
-      try {
-        return await puppeteer.connect(browserBinding, s.sessionId);
-      } catch {
-        // Taken or closed between listing and connecting - try the next.
-      }
+  const MAX_ATTEMPTS = 4;
+  let lastErr: unknown;
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+    if (attempt > 0) {
+      await new Promise((r) => setTimeout(r, 1500 * attempt));
     }
-  } catch {
-    // sessions() unsupported/failed - fall through to a fresh launch.
+    try {
+      const sessions = await puppeteer.sessions(browserBinding);
+      // A session with no connectionId has no active puppeteer connection - free
+      // to reconnect to. Try each (another request may grab one first).
+      const free = sessions.filter((s: { connectionId?: string }) => !s.connectionId);
+      for (const s of free as { sessionId: string }[]) {
+        try {
+          return await puppeteer.connect(browserBinding, s.sessionId);
+        } catch {
+          // Taken or closed between listing and connecting - try the next.
+        }
+      }
+      return await puppeteer.launch(browserBinding, { keep_alive: BROWSER_KEEP_ALIVE_MS });
+    } catch (err) {
+      // Retry only the browser-creation rate limit; surface anything else at once.
+      lastErr = err;
+      if (!/429|rate limit/i.test((err as Error).message)) throw err;
+    }
   }
-  return puppeteer.launch(browserBinding, { keep_alive: BROWSER_KEEP_ALIVE_MS });
+  throw lastErr;
 }
 
 // Releases a browser acquired via acquireBrowser by DISCONNECTING (not closing),
