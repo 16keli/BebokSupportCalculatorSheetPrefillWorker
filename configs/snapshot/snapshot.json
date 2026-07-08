@@ -16,7 +16,8 @@
     "gems",
     "skills",
     "armor",
-    "gem_skill_groups"
+    "gem_skill_groups",
+    "add_dmg_bracelet"
   ],
   "intermediates": [
     {
@@ -38,6 +39,11 @@
       "id": "arkPassive",
       "exprFile": "expr/arkPassive.ts",
       "comment": "Ark passive nodes resolved against ark_passive.json. Exposes evolution levels by id (evo[id]) and enlightenment main/side node levels per tier (enlMain[tier], enlSide[tier]). Enlightenment tier/type come from the ref file; evolution cells are mapped by explicit id in the fields below."
+    },
+    {
+      "id": "addDamageParts",
+      "exprFile": "expr/addDamageParts.ts",
+      "comment": "DPS-only. Per-source Additional Damage contributions (each a fraction) summed by dpsAddDmgTotal into the DPS tab's C20 cell: weapon (computed weapon stat id 10144000 /10000), Master evolution node 1032200 (8.5% when allocated), ark-grid side lines (sum of side-line levels x 0.0008086), the 'Stable Attack' ark-grid core (threshold+grade schedule), bracelet additional damage (auto: sum of the bracelet's 'Additional Damage' special-effect lines via data/add_dmg_bracelet.json, e.g. 11041->3.5%, plus any raw skill_damage_rate roll at index 50, value/10000), and the stronghold farm select (dpsStronghold). Reads $.itemBySlot/$.arkPassive/$.arkGrid + inputs; support fields never reference it."
     },
     {
       "id": "combatStats",
@@ -563,6 +569,41 @@
       "id": "dpsGemmedSkills",
       "exprFile": "expr/dpsGems.ts",
       "comment": "Source for the DPS tab's gem block (H3:I11), bound as character='dps'. Every gemmed skill as {dmg,cdr} gem-level pairs in gem-equip order, covering BOTH single-skill gems (effect type 5/27) AND skill-GROUP gems (type 34/35 -> raw_data/GemSkillGroup.json via ref.gem_skill_groups): DPS skills are mostly gemmed by group, so type 5/27 alone misses most of them. Nothing is excluded (a support-class DPS still lists ap1/ap2/brand). The sheet's expr/gemLevel.ts transform picks [row].dmg or .cdr per cell. See expr/dpsGems.ts."
+    },
+    {
+      "id": "dpsAddDmgTotal",
+      "exprFile": "expr/dpsAddDmgTotal.ts",
+      "comment": "DPS tab C20 (character='dps', percent). Additive sum (a fraction) of the DPS's Additional Damage sources from addDamageParts."
+    },
+    {
+      "id": "dpsAddDmgWeapon",
+      "expr": "$.addDamageParts.weapon",
+      "comment": "Debug/part: weapon-quality additional damage (computed weapon stat id 10144000 /10000)."
+    },
+    {
+      "id": "dpsAddDmgEvo",
+      "expr": "$.addDamageParts.evo",
+      "comment": "Debug/part: Master evolution node (1032200) additional damage (0.085 when allocated)."
+    },
+    {
+      "id": "dpsAddDmgSide",
+      "expr": "$.addDamageParts.side",
+      "comment": "Debug/part: ark-grid side-line additional damage (sum of side-line levels x 0.0008086)."
+    },
+    {
+      "id": "dpsAddDmgStable",
+      "expr": "$.addDamageParts.stable",
+      "comment": "Debug/part: 'Stable Attack' ark-grid core additional damage (threshold + grade schedule)."
+    },
+    {
+      "id": "dpsAddDmgBracelet",
+      "expr": "$.addDamageParts.bracelet",
+      "comment": "Debug/part: bracelet additional damage (auto: special-effect ability ids via data/add_dmg_bracelet.json + raw skill_damage_rate rolls at index 50, summed)."
+    },
+    {
+      "id": "dpsAddDmgStronghold",
+      "expr": "$.addDamageParts.stronghold",
+      "comment": "Debug/part: stronghold farm additional damage (manual select dpsStronghold /100)."
     }
   ]
 }

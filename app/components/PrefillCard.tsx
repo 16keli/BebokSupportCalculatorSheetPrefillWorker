@@ -248,18 +248,30 @@ function SpecSwiftTable({
     <div className="spec-swift-wrap">
       <div className="spec-swift-table">
         <div className="spec-swift-cell spec-swift-header" />
-        <div className="spec-swift-cell spec-swift-header">
-          <img src="/icons/spec.png" alt="" className="spec-swift-icon" />
-          Specialization
+        <div
+          className="spec-swift-cell spec-swift-header"
+          title="Specialization"
+        >
+          <img
+            src="/icons/spec.png"
+            alt="Specialization"
+            className="spec-swift-icon"
+          />
         </div>
-        <div className="spec-swift-cell spec-swift-header">
-          <img src="/icons/swift.png" alt="" className="spec-swift-icon" />
-          Swiftness
+        <div className="spec-swift-cell spec-swift-header" title="Swiftness">
+          <img
+            src="/icons/swift.png"
+            alt="Swiftness"
+            className="spec-swift-icon"
+          />
         </div>
         <div className="spec-swift-cell spec-swift-header">Other</div>
 
-        <div className="spec-swift-cell spec-swift-row-label">
-          {pet.label ?? "Pet"}
+        <div
+          className="spec-swift-cell spec-swift-row-label"
+          title={pet.label ?? "Pet"}
+        >
+          Pet
         </div>
         {(["spec", "swiftness", "other"] as const).map((value) => (
           <button
@@ -274,7 +286,7 @@ function SpecSwiftTable({
           </button>
         ))}
 
-        <div className="spec-swift-cell spec-swift-row-label">Roster Bonus</div>
+        <div className="spec-swift-cell spec-swift-row-label">Roster</div>
         <div className="spec-swift-cell">
           <input
             id={`${idPrefix}-rosterSpec`}
@@ -856,6 +868,39 @@ export function PrefillCard({ card, onDone }: PrefillCardProps) {
     );
   }
 
+  function renderSection([section, defs]: readonly [string, AdvancedInput[]]) {
+    return (
+      <div className="advanced-section" key={section || "default"}>
+        {section && <div className="advanced-section-head">{section}</div>}
+        {section === "Specialization / Swiftness" ? (
+          <SpecSwiftTable
+            pet={defs.find((d) => d.id === "pet")!}
+            rosterSpec={defs.find((d) => d.id === "rosterSpec")!}
+            rosterSwift={defs.find((d) => d.id === "rosterSwift")!}
+            inputs={current.inputs}
+            onChange={setField}
+            onPetChange={(v) => {
+              if (!selectedKey) return;
+              updateParty(selectedKey, (s) => ({
+                inputs: { ...s.inputs, pet: v },
+                petTouched: true,
+              }));
+            }}
+            locked={locked}
+            idPrefix={`inp-${card.jobId}`}
+          />
+        ) : (
+          defs.map(renderField)
+        )}
+      </div>
+    );
+  }
+
+  // Split the sections into a support column and a DPS column (DPS sections are
+  // those whose heading starts with "DPS"), rendered side by side.
+  const dpsSections = sections.filter(([s]) => s.startsWith("DPS"));
+  const supportSections = sections.filter(([s]) => !s.startsWith("DPS"));
+
   return (
     <div className="pick-card">
       <div className="pick-card-title">{card.logUrl}</div>
@@ -991,33 +1036,18 @@ export function PrefillCard({ card, onDone }: PrefillCardProps) {
           )}
           <details className="advanced-collapse">
             <summary>Advanced inputs</summary>
-            {sections.map(([section, defs]) => (
-              <div className="advanced-section" key={section || "default"}>
-                {section && (
-                  <div className="advanced-section-head">{section}</div>
-                )}
-                {section === "Specialization / Swiftness" ? (
-                  <SpecSwiftTable
-                    pet={defs.find((d) => d.id === "pet")!}
-                    rosterSpec={defs.find((d) => d.id === "rosterSpec")!}
-                    rosterSwift={defs.find((d) => d.id === "rosterSwift")!}
-                    inputs={current.inputs}
-                    onChange={setField}
-                    onPetChange={(v) => {
-                      if (!selectedKey) return;
-                      updateParty(selectedKey, (s) => ({
-                        inputs: { ...s.inputs, pet: v },
-                        petTouched: true,
-                      }));
-                    }}
-                    locked={locked}
-                    idPrefix={`inp-${card.jobId}`}
-                  />
-                ) : (
-                  defs.map(renderField)
-                )}
+            <div className="advanced-columns">
+              <div className="advanced-column">
+                <div className="advanced-column-head">Support</div>
+                {supportSections.map(renderSection)}
               </div>
-            ))}
+              {dpsSections.length > 0 && (
+                <div className="advanced-column">
+                  <div className="advanced-column-head">DPS</div>
+                  {dpsSections.map(renderSection)}
+                </div>
+              )}
+            </div>
           </details>
           <button
             type="button"

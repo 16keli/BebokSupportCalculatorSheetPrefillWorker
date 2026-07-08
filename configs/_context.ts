@@ -65,6 +65,10 @@ export interface RefTables {
   // raw_data/GemSkillGroup.json). Resolves type-34/35 group-targeting gems to
   // their skills for the DPS gem block (see configs/snapshot/expr/dpsGems.ts).
   gem_skill_groups?: Record<string, number[]>;
+  // Bracelet "Additional Damage" special-effect ability id -> additional-damage
+  // fraction (data/add_dmg_bracelet.json, from raw_data/Ability.json). A snapshot
+  // bracelet stat's `index` is the ability id; see expr/addDamageParts.ts.
+  add_dmg_bracelet?: Record<string, number>;
 }
 
 // -- Intermediate result shapes ($.<id>) ------------------------------------
@@ -132,11 +136,24 @@ export interface CombatStats {
 
 // The snapshot datasource's intermediates. Explicitly enumerated (no index
 // signature) so a typo like `$.classSkil` is a compile error.
+// Per-source Additional Damage contributions for the DPS player, each a fraction
+// (0.06 = 6%). Summed by dpsAddDmgTotal into the DPS tab's C20 cell. See
+// configs/snapshot/expr/addDamageParts.ts.
+export interface AddDamageParts {
+  weapon: number;
+  evo: number;
+  side: number;
+  stable: number;
+  bracelet: number;
+  stronghold: number;
+}
+
 export interface SnapshotIntermediates {
   itemBySlot: Record<string, Item>;
   gearTier: Record<string, string>;
   arkGrid: ArkGrid;
   arkPassive: ArkPassiveResolved;
+  addDamageParts: AddDamageParts;
   combatStats: CombatStats;
   stoneEngravings: StoneEngraving[];
   skillGems: SkillGems;

@@ -183,6 +183,89 @@ for (const file of ["mirsee", "esthie", "edward", "sos69"]) {
   );
 }
 
+// -- DPS Additional Damage (C20) ----------------------------------------
+// Each source is a fraction summed by dpsAddDmgTotal into the DPS tab's C20.
+// (a) Real payload: the live snapshotPayload.json weapon carries the computed
+//     stat id 10144000 (=2882 -> weapon 0.2882). (b) Synthetic: a grade-3
+//     ("ancient") Stable Attack core (673101006) at threshold 20 + the Master
+//     evolution node (1032200) exercise the grid-schedule and evo detection.
+console.log("\n=== DPS ADDITIONAL DAMAGE (C20) ===");
+const ADD_DMG_PARTS = [
+  "dpsAddDmgWeapon",
+  "dpsAddDmgEvo",
+  "dpsAddDmgSide",
+  "dpsAddDmgStable",
+  "dpsAddDmgBracelet",
+  "dpsAddDmgStronghold",
+  "dpsAddDmgTotal",
+];
+try {
+  const dpsInputs = resolveInputs(bundle.sheet.inputs, {
+    dpsStronghold: "1.0",
+  });
+  const livePayload = JSON.parse(read("planning/samples/snapshotPayload.json"));
+  const liveRes = evaluateSource(snapSource, livePayload, undefined, dpsInputs);
+  console.log("  -- real snapshot (snapshotPayload.json, stronghold 1.0%) --");
+  for (const id of ADD_DMG_PARTS) {
+    const r = liveRes[id];
+    console.log(
+      `  ${id.padEnd(20)} = ${r.error ? "ERROR " + r.error : r.value}`,
+    );
+  }
+
+  // Synthetic: ancient Stable Attack core at threshold 20 + Master node.
+  const synthetic = JSON.parse(read("planning/samples/snapshotPayload.json"));
+  const sRoot = resolveRoot(synthetic, snapSource) as any;
+  sRoot.arkGridCores = [
+    {
+      id: 673101006,
+      base: 10004,
+      gems: [{ id: 67401025, idx: 0, costReduc: 5, corePoints: 20, opts: [] }],
+    },
+  ];
+  sRoot.arkPassive = {
+    evolution: [{ id: 1032200, level: 1 }],
+    enlightenment: [],
+  };
+  // Give the bracelet BOTH additional-damage forms: an "Additional Damage +3.5%"
+  // special effect (ability index 11041 -> 0.035) and a raw skill_damage_rate roll
+  // (index 50, value 300 -> 0.03). They sum to 0.065.
+  const synthBrac = (sRoot.items || []).find(
+    (i: { slot: string }) => i.slot === "bracelet",
+  );
+  if (synthBrac)
+    synthBrac.data.stats.push(
+      { type: 3, index: 11041, value: 5, fixed: false },
+      { type: 2, index: 50, value: 300, fixed: false },
+    );
+  const synthInputs = resolveInputs(bundle.sheet.inputs, {
+    dpsStronghold: "0",
+  });
+  const synthRes = evaluateSource(
+    snapSource,
+    synthetic,
+    undefined,
+    synthInputs,
+  );
+  const stable = synthRes.dpsAddDmgStable.raw;
+  const evo = synthRes.dpsAddDmgEvo.raw;
+  const brac = synthRes.dpsAddDmgBracelet.raw;
+  console.log(
+    "  -- synthetic (ancient Stable Attack @20p + Master node + bracelet 11041 + index-50) --",
+  );
+  console.log(
+    `  dpsAddDmgStable      = ${stable} ${stable === 0.028 + 0.0023 * 3 ? "OK" : "MISMATCH (expected 0.0349)"}`,
+  );
+  console.log(
+    `  dpsAddDmgEvo         = ${evo} ${evo === 0.085 ? "OK" : "MISMATCH (expected 0.085)"}`,
+  );
+  console.log(
+    `  dpsAddDmgBracelet    = ${brac} ${brac === 0.065 ? "OK (11041 0.035 + index50 0.03)" : "MISMATCH (expected 0.065)"}`,
+  );
+} catch (e) {
+  console.log(`  (skipped: ${(e as Error).message})`);
+}
+
 // -- Resolve to cells (party 0 = mirsee's party + snapshot + loadout) ---
 const fieldValues: Record<string, FieldResult> = {
   ...logResultsByParty["0"],

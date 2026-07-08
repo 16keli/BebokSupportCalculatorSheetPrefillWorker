@@ -82,6 +82,32 @@
         }
       ],
       "help": "Main stat % from stronghold farm."
+    },
+    {
+      "id": "dpsStronghold",
+      "label": "DPS stronghold farm bonus",
+      "type": "select",
+      "default": "1.0",
+      "section": "DPS Additional Damage",
+      "options": [
+        {
+          "value": "0",
+          "label": "0%"
+        },
+        {
+          "value": "0.4",
+          "label": "0.4%"
+        },
+        {
+          "value": "0.7",
+          "label": "0.7%"
+        },
+        {
+          "value": "1.0",
+          "label": "1.0%"
+        }
+      ],
+      "help": "Stronghold farm additional damage for the DPS (feeds the DPS Additional Damage total, C20)."
     }
   ],
   "cells": [
@@ -739,6 +765,14 @@
       "sheetTab": "DPS players data (Serca)",
       "transform": "raw === '' || raw == null ? '' : (+raw >= 5 ? '9/7 and better' : 'worse than 9/7')",
       "comment": "Same ability-stone treatment as the support's F19: sum of activated engraving levels >=5 -> '9/7 and better', else 'worse than 9/7'."
+    },
+    {
+      "cell": "C20",
+      "field": "dpsAddDmgTotal",
+      "character": "dps",
+      "sheetTab": "DPS players data (Serca)",
+      "format": "percent1",
+      "comment": "Additional Damage total: additive sum (fraction) of the DPS's sources (weapon quality + Master evolution node + ark-grid side lines + 'Stable Attack' core + bracelet + stronghold). Computed in the DPS snapshot pass (dps:dpsAddDmgTotal); see configs/snapshot/expr/addDamageParts.ts."
     },
     {
       "comment": "H3:I11 gem block - the DPS's gemmed skills top-down (dpsGemmedSkills, gem-equip order, ap1/ap2/brand NOT excluded). Each cell shares field dpsGemmedSkills + expr/gemLevel.ts: transformArg = row (0-8), transformContext = 'dmg' (H, damage gem) or 'cdr' (I, cooldown gem). Rows beyond the DPS's gem count stay blank.",
