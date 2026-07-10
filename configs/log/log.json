@@ -3,9 +3,9 @@
   "source": "log",
   "version": {
     "path": "encounterDamageStats.misc.version",
-    "supported": "<=1.47.0"
+    "supported": "<=1.47.1"
   },
-  "comment": "LOA Logs <= 1.47.0. root = the encounter object. `players` is bound to the selected party's PLAYER entities; `member` to the focused support (or null). Intermediates with scope:'member' re-bind `players` to just [member], which is how the same expression form is reused to filter a single member instead of the whole party.",
+  "comment": "LOA Logs <= 1.47.1. root = the encounter object. `players` is bound to the selected party's PLAYER entities; `member` to the focused support (or null). Intermediates with scope:'member' re-bind `players` to just [member], which is how the same expression form is reused to filter a single member instead of the whole party.",
   "rootPath": "data[0].encounterInfo.encounter",
   "rootPathFallbacks": [
     "data[1].encounterInfo.encounter",
