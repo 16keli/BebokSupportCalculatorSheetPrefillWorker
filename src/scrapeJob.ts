@@ -261,20 +261,11 @@ export class ScrapeJob extends DurableObject<Env> {
         const supports = partyEntities.filter((e) => SUPPORT_SPECS.has(e.spec));
 
         if (supports.length === 0) {
-          // playerEntities already excludes anyone without a loadoutHash, so a
-          // support that's visibly a support in the party display (isSupport,
-          // from meta.parties - see PartyMemberInfo) but missing here means
-          // lostark.bible has no gear data for them, not that none exists.
-          const displayedSupports = meta.parties
-            .flatMap((p) => p.players)
-            .filter(
-              (m) => m.isSupport && (!partyNames || partyNames.has(m.name)),
-            );
-          const message =
-            displayedSupports.length > 0
-              ? `Found a support player (${displayedSupports.map((m) => m.name).join(", ")}) in the selected party, but lostark.bible has no gear data for them in this log. Try a different log, or link their character directly.`
-              : "Could not find a support player (Blessed Aura, Liberator, Desperate Salvation, or Full Bloom) in the selected party.";
-          send({ type: "error", message });
+          send({
+            type: "error",
+            message:
+              "Could not find a support player (Blessed Aura, Liberator, Desperate Salvation, or Full Bloom) in the selected party.",
+          });
           return;
         }
         if (supports.length > 1) {
@@ -287,13 +278,18 @@ export class ScrapeJob extends DurableObject<Env> {
         const supportEntity = supports[0]!;
 
         // loadoutHash comes from the scraped log payload and is interpolated
-        // into the snapshot/loadout scrape URLs below. Enforce its expected
+        // into the snapshot/loadout scrape URLs below; enforce its expected
         // "v<n>/<hex>" shape so a crafted hash can't smuggle path traversal or
-        // a different host into those navigations.
-        if (!LOADOUT_HASH_PATTERN.test(supportEntity.loadoutHash)) {
+        // a different host into those navigations. lostark.bible only sets it
+        // for characters the uploader has linked, so it's routinely absent -
+        // that's fine as long as a supportGearLink override stands in for it.
+        const supportHasLoadoutHash = LOADOUT_HASH_PATTERN.test(
+          supportEntity.loadoutHash,
+        );
+        if (!supportHasLoadoutHash && !supportGearLink) {
           send({
             type: "error",
-            message: `Unexpected loadout hash for ${supportEntity.name}; cannot fetch character data.`,
+            message: `Found a support player (${supportEntity.name}) in the selected party, but lostark.bible has no gear data for them in this log. Try a different log, or link their character directly.`,
           });
           return;
         }
@@ -305,7 +301,9 @@ export class ScrapeJob extends DurableObject<Env> {
 
         // The bible snapshot/loadout payloads carry no version field; their
         // version is the loadoutHash prefix (e.g. "v3/<hash>" -> "v3").
-        const bibleVersion = versionFromLoadoutHash(supportEntity.loadoutHash);
+        const bibleVersion = supportHasLoadoutHash
+          ? versionFromLoadoutHash(supportEntity.loadoutHash)
+          : undefined;
 
         // Snapshot<->log cross-validation now happens up front (validateParty,
         // phase 1.5), surfacing discrepancies during configuration rather than
@@ -347,6 +345,13 @@ export class ScrapeJob extends DurableObject<Env> {
               });
             }
           }
+          if (!usedSupportOverride && !supportHasLoadoutHash) {
+            send({
+              type: "error",
+              message: `Found a support player (${supportEntity.name}) in the selected party, but lostark.bible has no gear data for them in this log and the character-link override failed. Try a different log, or a different character link.`,
+            });
+            return;
+          }
           if (!usedSupportOverride) {
             const snapshotUrl = `https://lostark.bible/character/snapshot/${supportEntity.loadoutHash}`;
             send({
@@ -371,13 +376,15 @@ export class ScrapeJob extends DurableObject<Env> {
         }
 
         // Loadout is a separate page (skins etc.). Best-effort: only when a
-        // config provides a urlTemplate and has fields; failure is non-fatal so
-        // a bad/unknown loadout URL never breaks the rest of the prefill.
+        // config provides a urlTemplate and has fields, and we actually have a
+        // loadoutHash for the support (the override link has no loadout page
+        // equivalent); failure is non-fatal so a bad/unknown loadout URL never
+        // breaks the rest of the prefill.
         const loadoutGate = loadoutVariants.find(
           (s) => s.urlTemplate && s.fields.length > 0,
         );
         let loadoutFields: Record<string, FieldResult> = {};
-        if (loadoutGate) {
+        if (loadoutGate && supportHasLoadoutHash) {
           const loadoutUrl = loadoutGate.urlTemplate!.replace(
             "{hash}",
             supportEntity.loadoutHash,

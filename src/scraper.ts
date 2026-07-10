@@ -340,17 +340,16 @@ export async function fetchLogPhase(
     parties.sort((a, b) => a.partyNumber - b.partyNumber);
   }
 
-  const playerEntities: PlayerEntity[] = [];
-  for (const e of allPlayers) {
-    if (e.loadoutHash) {
-      playerEntities.push({
-        name: e.name,
-        classId: e.classId,
-        spec: e.spec ?? "",
-        loadoutHash: e.loadoutHash,
-      });
-    }
-  }
+  // Include every player, even those lostark.bible has no loadoutHash for
+  // (unlinked characters) - callers need to see them to tell "no support in
+  // the party" apart from "support found but no gear data for them" and to
+  // let a manual character-link override stand in for the missing gear.
+  const playerEntities: PlayerEntity[] = allPlayers.map((e) => ({
+    name: e.name,
+    classId: e.classId,
+    spec: e.spec ?? "",
+    loadoutHash: e.loadoutHash ?? "",
+  }));
 
   // Capture each player's known-good log data so phase 2 can cross-check the
   // fetched snapshot against it (compareSnapshotToLog). Keyed by name; built for
