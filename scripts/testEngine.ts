@@ -345,8 +345,16 @@ try {
     sBrac.data.stats.push(
       { type: 3, index: 11011, value: 1, fixed: false },
       { type: 2, index: 15, value: 2794, fixed: false },
-      { type: 2, index: 74, value: 95, fixed: false },
+      // Raw index-74 crit rate on the BRACELET (same params as a ring line).
+      { type: 2, index: 74, value: 60, fixed: false },
     );
+  // Raw index-74 crit rate on a RING too; both sum into the `ring` part
+  // (35 + 60 = 95 -> 0.0095).
+  const sRing = (sRoot.items || []).find((i: { slot: string }) =>
+    i.slot.startsWith("finger"),
+  );
+  if (sRing)
+    sRing.data.stats.push({ type: 2, index: 74, value: 35, fixed: false });
   const sRes = evaluateSource(snapSource, synth, undefined, {
     dpsSpec: "Judgment",
   });
@@ -369,7 +377,7 @@ try {
     ring: 0.0095,
   };
   console.log(
-    "  -- synthetic (Zealous Smite L2 + Sophistication L3 + bracelet 11011 + crit stat 2794 + ring 95 + Judgment) --",
+    "  -- synthetic (Zealous Smite L2 + Sophistication L3 + bracelet 11011 + crit stat 2794 + index-74 on bracelet 60 + ring 35 + Judgment) --",
   );
   for (const [k, v] of Object.entries(parts))
     console.log(

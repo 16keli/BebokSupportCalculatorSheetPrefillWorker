@@ -4,8 +4,10 @@
 // 5%). dpsCritRateTotal ADDITIVELY sums them into the DPS tab's C24 cell (percent
 // formatted, default 0) - crit rate is additive in-game (unlike the multiplicative
 // C22 crit-hit-damage). Crit rate is statType CRITICAL_HIT_RATE (74). Sources:
-// bracelet crit-rate lines, generic evolution nodes, class enlightenment nodes,
-// a curated class synergy, the raw Crit combat stat, and ring crit-rate lines.
+// bracelet special-effect crit-rate lines (ability ids 11011-14), generic
+// evolution nodes, class enlightenment nodes, a curated class synergy, the raw
+// Crit combat stat, and raw index-74 crit-rate lines (rings AND bracelets both
+// carry these, with the same parameters).
 //
 // Bindings: ref (crit_rate_bracelet/enlightenment/synergy), input (dpsSpec),
 // $ (arkPassive, itemBySlot).
@@ -19,13 +21,14 @@ const EVO_NODES: Record<number, number> = {
   1030200: 0.12, // Zealous Smite (12% / 24%)
   1030300: 0.1, // Strike        (10% / 20%)
 };
-// Accessory/bracelet stat-line indices: Crit combat stat = 15 (Spec = 16, Swift =
-// 18 are confirmed neighbors); ring crit-rate % line = 74 (CRITICAL_HIT_RATE).
+// Item stat-line indices: Crit combat stat = 15 (Spec = 16, Swift = 18 are
+// confirmed neighbors); raw crit-rate % line = 74 (CRITICAL_HIT_RATE), carried by
+// both rings and bracelets with the same parameters.
 const CRIT_STAT_INDEX = 15;
 const CRIT_RATE_INDEX = 74;
 // Crit combat points -> crit-rate fraction (user-supplied; not in raw data).
 const CRIT_STAT_DIVISOR = 2794;
-// Ring crit-rate line value is in hundredths of a percent (95 -> 0.95%).
+// Raw crit-rate line value is in hundredths of a percent (95 -> 0.95%).
 const CRIT_RATE_LINE_SCALE = 10000;
 
 export default snapshotExpr<void, CritRateParts>(({ ref, input, $ }) => {
@@ -71,7 +74,9 @@ export default snapshotExpr<void, CritRateParts>(({ ref, input, $ }) => {
   // Raw Crit combat stat (sum of index-15 lines) -> fraction via the divisor.
   const critStat = sumItemStat(CRIT_STAT_INDEX) / CRIT_STAT_DIVISOR;
 
-  // Ring crit-rate lines (index-74 stat, value in hundredths of a percent).
+  // Raw crit-rate lines (index-74 stat, value in hundredths of a percent).
+  // sumItemStat spans every equipped item, so this covers both ring and bracelet
+  // index-74 rolls (same parameters).
   const ring = sumItemStat(CRIT_RATE_INDEX) / CRIT_RATE_LINE_SCALE;
 
   return { bracelet, evo, enlightenment, synergy, critStat, ring };

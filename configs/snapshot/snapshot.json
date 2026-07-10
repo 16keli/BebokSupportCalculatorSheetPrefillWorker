@@ -52,7 +52,7 @@
     {
       "id": "critRateParts",
       "exprFile": "expr/critRateParts.ts",
-      "comment": "DPS-only. Per-source crit-rate contributions (each a fraction) ADDITIVELY summed by dpsCritRateTotal into the DPS tab's C24 cell (default 0): bracelet crit-rate lines (Ability 11011-14 via data/crit_rate_bracelet.json), generic evolution nodes (1020300 Keen Sense 0.04, 1030200 Zealous Smite 0.12, 1030300 Strike 0.10 per level x level), enlightenment nodes (data/crit_rate_enlightenment.json per-level x $.arkPassive.enl level), curated class synergy (data/crit_rate_synergy.json keyed by input.dpsSpec), the raw Crit combat stat (sum of item index-15 lines / 2794), and ring crit-rate lines (sum of item index-74 lines / 10000). Reads $.arkPassive/$.itemBySlot + ref/input; support fields never reference it."
+      "comment": "DPS-only. Per-source crit-rate contributions (each a fraction) ADDITIVELY summed by dpsCritRateTotal into the DPS tab's C24 cell (default 0): bracelet crit-rate lines (Ability 11011-14 via data/crit_rate_bracelet.json), generic evolution nodes (1020300 Keen Sense 0.04, 1030200 Zealous Smite 0.12, 1030300 Strike 0.10 per level x level), enlightenment nodes (data/crit_rate_enlightenment.json per-level x $.arkPassive.enl level), curated class synergy (data/crit_rate_synergy.json keyed by input.dpsSpec), the raw Crit combat stat (sum of item index-15 lines / 2794), and raw index-74 crit-rate lines (sum of ALL item index-74 lines / 10000 - both rings and bracelets carry these with the same parameters). Reads $.arkPassive/$.itemBySlot + ref/input; support fields never reference it."
     },
     {
       "id": "critHitParts",
@@ -672,7 +672,7 @@
     {
       "id": "dpsCritRateRing",
       "expr": "$.critRateParts.ring",
-      "comment": "Debug/part: ring crit-rate lines (sum of item index-74 lines / 10000)."
+      "comment": "Debug/part: raw index-74 crit-rate lines across all items (rings and bracelets), sum / 10000."
     }
   ]
 }
