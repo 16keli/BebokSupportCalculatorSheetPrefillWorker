@@ -130,11 +130,14 @@ export type StreamEvent =
   // Phase 1.5: one per party member as its snapshot is cross-checked against the
   // log. `warnings` lists discrepancy reasons (empty/absent = clean); `error` is
   // set when the snapshot couldn't be fetched (validation is best-effort).
+  // `permanent` marks an error that retrying won't fix (e.g. lostark.bible has
+  // no gear data for this member at all).
   | {
       type: "snapshot-checked";
       name: string;
       warnings?: string[];
       error?: string;
+      permanent?: boolean;
     }
   | { type: "snapshot-check-done" }
   | { type: "prefill-done"; message: string; spreadsheetUrl: string }

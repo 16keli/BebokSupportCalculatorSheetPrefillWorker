@@ -108,9 +108,23 @@ function MemberBadge({
   if (!v)
     return <span className="member-badge placeholder" aria-hidden="true" />;
   const m = meta[v.state];
-  // Final error with a retry handler: make it an actionable control. Uses a
-  // span (not <button>) with stopPropagation so it nests validly inside the
-  // party-select button in the multi-party picker without triggering re-select.
+  // A permanent error (retrying can't fix it, e.g. no gear data at all for this
+  // character) is terminal: show the actual reason, not a generic/clickable
+  // "retry" badge that implies trying again might work.
+  if (v.state === "error" && v.permanent) {
+    return (
+      <span
+        className="member-badge error"
+        title={v.message ?? "Couldn't validate this snapshot"}
+      >
+        !
+      </span>
+    );
+  }
+  // Final (non-permanent) error with a retry handler: make it an actionable
+  // control. Uses a span (not <button>) with stopPropagation so it nests
+  // validly inside the party-select button in the multi-party picker without
+  // triggering re-select.
   if (v.state === "error" && onRetry) {
     return (
       <span
@@ -443,6 +457,11 @@ interface PartyFormState {
 interface MemberValidation {
   state: "checking" | "retrying" | "ok" | "warn" | "error";
   warnings?: string[];
+  // Set on a permanent error (retrying can't help, e.g. lostark.bible has no
+  // gear data for this character at all) - shown in the badge tooltip and
+  // excluded from the auto-retry loop.
+  message?: string;
+  permanent?: boolean;
 }
 
 export function PrefillCard({ card, onDone }: PrefillCardProps) {
@@ -620,7 +639,11 @@ export function PrefillCard({ card, onDone }: PrefillCardProps) {
         (evt) => {
           if (evt.type === "snapshot-checked") {
             const result: MemberValidation = evt.error
-              ? { state: "error" }
+              ? {
+                  state: "error",
+                  message: evt.error,
+                  permanent: evt.permanent,
+                }
               : evt.warnings && evt.warnings.length
                 ? { state: "warn", warnings: evt.warnings }
                 : { state: "ok" };
@@ -645,20 +668,26 @@ export function PrefillCard({ card, onDone }: PrefillCardProps) {
       }));
     }
 
-    // Any member unresolved (errored, or never reported due to a stream error)?
+    // Any member unresolved with a RETRYABLE error (errored non-permanently, or
+    // never reported due to a stream error)? A permanent error (e.g. no gear
+    // data at all for that character) can't be fixed by retrying, so it's
+    // excluded here - retrying would just delay showing the real problem.
     const hasErrors =
       streamError ||
       players.some(
         (m) =>
-          latest[m.name] === undefined || latest[m.name]!.state === "error",
+          latest[m.name] === undefined ||
+          (latest[m.name]!.state === "error" && !latest[m.name]!.permanent),
       );
     if (hasErrors && attempt < MAX_VALIDATION_ATTEMPTS) {
       // Show the failed members as "retrying" during the wait so they don't read
       // as final, then re-run after the browser cap has had time to recover.
+      // Permanent errors stay as "error" - they're not part of the retry.
       updateParty(partyKey, (s) => {
         const next = { ...(s.validation ?? {}) };
         for (const k of Object.keys(next)) {
-          if (next[k]?.state === "error") next[k] = { state: "retrying" };
+          if (next[k]?.state === "error" && !next[k]?.permanent)
+            next[k] = { state: "retrying" };
         }
         return { validation: next };
       });

@@ -616,7 +616,10 @@ export class ScrapeJob extends DurableObject<Env> {
         const cacheKey = `validation:${partyKey}`;
         const cached =
           await this.ctx.storage.get<
-            Record<string, { warnings?: string[]; error?: string }>
+            Record<
+              string,
+              { warnings?: string[]; error?: string; permanent?: boolean }
+            >
           >(cacheKey);
         if (cached) {
           for (const [name, r] of Object.entries(cached)) {
@@ -625,6 +628,7 @@ export class ScrapeJob extends DurableObject<Env> {
               name,
               warnings: r.warnings,
               error: r.error,
+              permanent: r.permanent,
             });
           }
           send({ type: "snapshot-check-done" });
@@ -688,8 +692,10 @@ export class ScrapeJob extends DurableObject<Env> {
           `[validateParty] partyKey=${partyKey} entities=${partyEntities.length} ` +
             `fetchable=${fetchable.length} missCount=${missCount} variants=${snapshotVariants.length}`,
         );
-        const results: Record<string, { warnings?: string[]; error?: string }> =
-          {};
+        const results: Record<
+          string,
+          { warnings?: string[]; error?: string; permanent?: boolean }
+        > = {};
         // Reuse ONE browser for every member's snapshot. Each puppeteer.launch
         // counts against Browser Rendering's new-browser-per-minute limit, so a
         // launch-per-member loop 429s after a couple; one shared session renders
@@ -712,9 +718,17 @@ export class ScrapeJob extends DurableObject<Env> {
         try {
           for (const entity of partyEntities) {
             if (!LOADOUT_HASH_PATTERN.test(entity.loadoutHash)) {
-              const error = "no character data";
-              results[entity.name] = { error };
-              send({ type: "snapshot-checked", name: entity.name, error });
+              // Permanent: lostark.bible has no gear data for this character at
+              // all, so re-running validation can never succeed for them.
+              const error =
+                "lostark.bible has no gear data for this character in this log";
+              results[entity.name] = { error, permanent: true };
+              send({
+                type: "snapshot-checked",
+                name: entity.name,
+                error,
+                permanent: true,
+              });
               continue;
             }
             // Uncached and no browser to render it: skip (phase 2 will fetch it).
