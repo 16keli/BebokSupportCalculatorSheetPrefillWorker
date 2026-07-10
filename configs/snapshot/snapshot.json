@@ -17,7 +17,11 @@
     "skills",
     "armor",
     "gem_skill_groups",
-    "add_dmg_bracelet"
+    "add_dmg_bracelet",
+    "crit_hit_synergy",
+    "crit_rate_bracelet",
+    "crit_rate_enlightenment",
+    "crit_rate_synergy"
   ],
   "intermediates": [
     {
@@ -44,6 +48,16 @@
       "id": "addDamageParts",
       "exprFile": "expr/addDamageParts.ts",
       "comment": "DPS-only. Per-source Additional Damage contributions (each a fraction) summed by dpsAddDmgTotal into the DPS tab's C20 cell: weapon (computed weapon stat id 10144000 /10000), Master evolution node 1032200 (8.5% when allocated), ark-grid side lines (sum of side-line levels x 0.0008086), the 'Stable Attack' ark-grid core (threshold+grade schedule), bracelet additional damage (auto: sum of the bracelet's 'Additional Damage' special-effect lines via data/add_dmg_bracelet.json, e.g. 11041->3.5%, plus any raw skill_damage_rate roll at index 50, value/10000), and the stronghold farm select (dpsStronghold). Reads $.itemBySlot/$.arkPassive/$.arkGrid + inputs; support fields never reference it."
+    },
+    {
+      "id": "critRateParts",
+      "exprFile": "expr/critRateParts.ts",
+      "comment": "DPS-only. Per-source crit-rate contributions (each a fraction) ADDITIVELY summed by dpsCritRateTotal into the DPS tab's C24 cell (default 0): bracelet crit-rate lines (Ability 11011-14 via data/crit_rate_bracelet.json), generic evolution nodes (1020300 Keen Sense 0.04, 1030200 Zealous Smite 0.12, 1030300 Strike 0.10 per level x level), enlightenment nodes (data/crit_rate_enlightenment.json per-level x $.arkPassive.enl level), curated class synergy (data/crit_rate_synergy.json keyed by input.dpsSpec), the raw Crit combat stat (sum of item index-15 lines / 2794), and ring crit-rate lines (sum of item index-74 lines / 10000). Reads $.arkPassive/$.itemBySlot + ref/input; support fields never reference it."
+    },
+    {
+      "id": "critHitParts",
+      "exprFile": "expr/critHitParts.ts",
+      "comment": "DPS-only. Per-source 'Damage on Crit Hit' contributions (each a fraction) combined MULTIPLICATIVELY by dpsCritHitTotal into the DPS tab's C22 cell (default 1): C22 = (1+critNode)*(1+bracelet)*(1+synergy). critNode = Critical ark-passive evolution node 1032100 (0.12 when allocated); bracelet = +0.015 per crit-hit-damage line (Ability ids 11011-11014 crit-rate / 11021-11024 crit-damage, a bracelet stat's index IS the ability id); synergy = curated class crit-hit-damage synergy keyed by the DPS's loa-logs spec (data/crit_hit_synergy.json, e.g. Judgment->0.08), injected as input.dpsSpec. Reads $.arkPassive/$.itemBySlot + ref/input; support fields never reference it."
     },
     {
       "id": "combatStats",
@@ -604,6 +618,61 @@
       "id": "dpsAddDmgStronghold",
       "expr": "$.addDamageParts.stronghold",
       "comment": "Debug/part: stronghold farm additional damage (manual select dpsStronghold /100)."
+    },
+    {
+      "id": "dpsCritHitTotal",
+      "exprFile": "expr/dpsCritHitTotal.ts",
+      "comment": "DPS tab C22 (character='dps', plain decimal, default 1). 'Damage on Crit Hit' multiplier = product of (1+source) over critHitParts: (1+critNode)*(1+bracelet)*(1+synergy)."
+    },
+    {
+      "id": "dpsCritNode",
+      "expr": "$.critHitParts.critNode",
+      "comment": "Debug/part: 'Critical' ark-passive evolution node (1032100) crit-hit damage (0.12 when allocated)."
+    },
+    {
+      "id": "dpsCritBracelet",
+      "expr": "$.critHitParts.bracelet",
+      "comment": "Debug/part: bracelet crit-hit damage (+0.015 per crit-rate/crit-damage line, Ability ids 11011-11014 / 11021-11024)."
+    },
+    {
+      "id": "dpsCritSynergy",
+      "expr": "$.critHitParts.synergy",
+      "comment": "Debug/part: class crit-hit-damage synergy (curated data/crit_hit_synergy.json keyed by input.dpsSpec)."
+    },
+    {
+      "id": "dpsCritRateTotal",
+      "exprFile": "expr/dpsCritRateTotal.ts",
+      "comment": "DPS tab C24 (character='dps', percent). Additive crit-rate bonus aggregate (a fraction) of the DPS's sources from critRateParts."
+    },
+    {
+      "id": "dpsCritRateBracelet",
+      "expr": "$.critRateParts.bracelet",
+      "comment": "Debug/part: bracelet crit-rate lines (Ability ids 11011-11014 via data/crit_rate_bracelet.json)."
+    },
+    {
+      "id": "dpsCritRateEvo",
+      "expr": "$.critRateParts.evo",
+      "comment": "Debug/part: evolution crit-rate nodes (1020300/1030200/1030300, per-level x level)."
+    },
+    {
+      "id": "dpsCritRateEnlightenment",
+      "expr": "$.critRateParts.enlightenment",
+      "comment": "Debug/part: enlightenment crit-rate nodes (data/crit_rate_enlightenment.json per-level x level)."
+    },
+    {
+      "id": "dpsCritRateSynergy",
+      "expr": "$.critRateParts.synergy",
+      "comment": "Debug/part: class crit-rate synergy (curated data/crit_rate_synergy.json keyed by input.dpsSpec)."
+    },
+    {
+      "id": "dpsCritRateCritStat",
+      "expr": "$.critRateParts.critStat",
+      "comment": "Debug/part: Crit combat stat (sum of item index-15 lines / 2794)."
+    },
+    {
+      "id": "dpsCritRateRing",
+      "expr": "$.critRateParts.ring",
+      "comment": "Debug/part: ring crit-rate lines (sum of item index-74 lines / 10000)."
     }
   ]
 }

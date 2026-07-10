@@ -69,6 +69,19 @@ export interface RefTables {
   // fraction (data/add_dmg_bracelet.json, from raw_data/Ability.json). A snapshot
   // bracelet stat's `index` is the ability id; see expr/addDamageParts.ts.
   add_dmg_bracelet?: Record<string, number>;
+  // DPS loa-logs spec (e.g. "Judgment") -> class crit-hit-damage synergy fraction
+  // (data/crit_hit_synergy.json). Hand-curated: the %s aren't in raw_data. Fed
+  // into the DPS "Damage on Crit Hit" total; see expr/critHitParts.ts.
+  crit_hit_synergy?: Record<string, number>;
+  // Bracelet "Crit Rate" special-effect ability id -> crit-rate fraction
+  // (data/crit_rate_bracelet.json, from raw_data/Ability.json, ids 11011-11014).
+  crit_rate_bracelet?: Record<string, number>;
+  // Enlightenment crit-rate node id -> PER-LEVEL crit-rate fraction
+  // (data/crit_rate_enlightenment.json, hand-curated, x allocated level).
+  crit_rate_enlightenment?: Record<string, number>;
+  // DPS loa-logs spec -> class crit-rate synergy fraction
+  // (data/crit_rate_synergy.json, hand-curated). See expr/critRateParts.ts.
+  crit_rate_synergy?: Record<string, number>;
 }
 
 // -- Intermediate result shapes ($.<id>) ------------------------------------
@@ -125,6 +138,9 @@ export interface ArkGrid {
 }
 export interface ArkPassiveResolved {
   evo: Record<number, number>;
+  // Every enlightenment node by id (like evo) - detects DPS nodes not in
+  // ark_passive.json (which only tags the 4 support classes). See arkPassive.ts.
+  enl: Record<number, number>;
   enlMain: Record<number, number>;
   enlSide: Record<number, number>;
 }
@@ -148,12 +164,35 @@ export interface AddDamageParts {
   stronghold: number;
 }
 
+// Per-source "Damage on Crit Hit" contributions for the DPS player, each a
+// fraction (0.12 = 12%). Combined multiplicatively by dpsCritHitTotal into the
+// DPS tab's C22 cell. See configs/snapshot/expr/critHitParts.ts.
+export interface CritHitParts {
+  critNode: number;
+  bracelet: number;
+  synergy: number;
+}
+
+// Per-source crit-rate contributions for the DPS player, each a fraction (0.05 =
+// 5%). ADDITIVELY summed by dpsCritRateTotal into the DPS tab's C24 cell. See
+// configs/snapshot/expr/critRateParts.ts.
+export interface CritRateParts {
+  bracelet: number;
+  evo: number;
+  enlightenment: number;
+  synergy: number;
+  critStat: number;
+  ring: number;
+}
+
 export interface SnapshotIntermediates {
   itemBySlot: Record<string, Item>;
   gearTier: Record<string, string>;
   arkGrid: ArkGrid;
   arkPassive: ArkPassiveResolved;
   addDamageParts: AddDamageParts;
+  critHitParts: CritHitParts;
+  critRateParts: CritRateParts;
   combatStats: CombatStats;
   stoneEngravings: StoneEngraving[];
   skillGems: SkillGems;

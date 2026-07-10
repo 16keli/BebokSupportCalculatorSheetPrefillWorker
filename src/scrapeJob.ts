@@ -261,11 +261,20 @@ export class ScrapeJob extends DurableObject<Env> {
         const supports = partyEntities.filter((e) => SUPPORT_SPECS.has(e.spec));
 
         if (supports.length === 0) {
-          send({
-            type: "error",
-            message:
-              "Could not find a support player (Blessed Aura, Liberator, Desperate Salvation, or Full Bloom) in the selected party.",
-          });
+          // playerEntities already excludes anyone without a loadoutHash, so a
+          // support that's visibly a support in the party display (isSupport,
+          // from meta.parties - see PartyMemberInfo) but missing here means
+          // lostark.bible has no gear data for them, not that none exists.
+          const displayedSupports = meta.parties
+            .flatMap((p) => p.players)
+            .filter(
+              (m) => m.isSupport && (!partyNames || partyNames.has(m.name)),
+            );
+          const message =
+            displayedSupports.length > 0
+              ? `Found a support player (${displayedSupports.map((m) => m.name).join(", ")}) in the selected party, but lostark.bible has no gear data for them in this log. Try a different log, or link their character directly.`
+              : "Could not find a support player (Blessed Aura, Liberator, Desperate Salvation, or Full Bloom) in the selected party.";
+          send({ type: "error", message });
           return;
         }
         if (supports.length > 1) {
@@ -410,6 +419,15 @@ export class ScrapeJob extends DurableObject<Env> {
         );
         const gearMemberName =
           gearMember ?? highestCpDps(partyMembersFor(meta, partyKey));
+        // The DPS's loa-logs spec (e.g. "Judgment") lives on the log entity, not
+        // the snapshot; inject it so the DPS snapshot pass can resolve class
+        // crit-hit-damage synergy (dps:dpsCritHitTotal / C22). Injected AFTER
+        // resolveInputs, which strips undeclared keys. Support fetches keep plain
+        // `inputs` (they ignore dpsSpec).
+        const dpsSpec =
+          meta.playerEntities.find((e) => e.name === gearMemberName)?.spec ??
+          "";
+        const dpsInputs = { ...inputs, dpsSpec };
         let dpsSnapshotFields: Record<string, FieldResult> = {};
         let usedDpsOverride = false;
         if (hasDpsCells && snapshotVariants.length > 0 && dpsGearLink) {
@@ -426,7 +444,7 @@ export class ScrapeJob extends DurableObject<Env> {
               dpsGearLink,
               snapshotVariants,
               loadoutVariants,
-              inputs,
+              dpsInputs,
               false,
             );
             dpsSnapshotFields = res.fields;
@@ -475,7 +493,7 @@ export class ScrapeJob extends DurableObject<Env> {
                 dpsUrl,
                 snapshotVariants,
                 this.env.bebok_scrape_cache,
-                inputs,
+                dpsInputs,
                 versionFromLoadoutHash(gearEntity.loadoutHash),
               );
               dpsSnapshotFields = res.fields;

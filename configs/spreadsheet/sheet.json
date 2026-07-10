@@ -775,6 +775,22 @@
       "comment": "Additional Damage total: additive sum (fraction) of the DPS's sources (weapon quality + Master evolution node + ark-grid side lines + 'Stable Attack' core + bracelet + stronghold). Computed in the DPS snapshot pass (dps:dpsAddDmgTotal); see configs/snapshot/expr/addDamageParts.ts."
     },
     {
+      "cell": "C22",
+      "field": "dpsCritHitTotal",
+      "character": "dps",
+      "sheetTab": "DPS players data (Serca)",
+      "format": "number2",
+      "comment": "Damage on Crit Hit multiplier (default 1): product of (1+source) over the 'Critical' ark-passive node, bracelet crit-hit-damage lines, and class crit-hit-damage synergy (keyed by the DPS's spec). Computed in the DPS snapshot pass (dps:dpsCritHitTotal); see configs/snapshot/expr/critHitParts.ts."
+    },
+    {
+      "cell": "C24",
+      "field": "dpsCritRateTotal",
+      "character": "dps",
+      "sheetTab": "DPS players data (Serca)",
+      "format": "percent1",
+      "comment": "Crit Rate bonus aggregate (additive, default 0): bracelet + evolution nodes + enlightenment + class synergy + Crit combat stat (/2794) + ring index-74 lines. Computed in the DPS snapshot pass (dps:dpsCritRateTotal); see configs/snapshot/expr/critRateParts.ts."
+    },
+    {
       "comment": "H3:I11 gem block - the DPS's gemmed skills top-down (dpsGemmedSkills, gem-equip order, ap1/ap2/brand NOT excluded). Each cell shares field dpsGemmedSkills + expr/gemLevel.ts: transformArg = row (0-8), transformContext = 'dmg' (H, damage gem) or 'cdr' (I, cooldown gem). Rows beyond the DPS's gem count stay blank.",
       "cell": "H3",
       "field": "dpsGemmedSkills",

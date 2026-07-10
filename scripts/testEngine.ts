@@ -266,6 +266,142 @@ try {
   console.log(`  (skipped: ${(e as Error).message})`);
 }
 
+// -- DPS Damage on Crit Hit (C22) ---------------------------------------
+// Multiplier defaulting to 1; sources combine multiplicatively:
+//   (1 + critNode) * (1 + bracelet) * (1 + synergy).
+// (a) Synthetic "loaded": the 'Critical' evolution node 1032100 (-> 0.12), a
+//     bracelet crit-rate line (index 11011 -> 0.015), and dpsSpec "Judgment"
+//     (curated synergy 0.08). (b) Default: no crit sources + unknown spec -> 1.
+console.log("\n=== DPS DAMAGE ON CRIT HIT (C22) ===");
+try {
+  const loaded = JSON.parse(read("planning/samples/snapshotPayload.json"));
+  const lRoot = resolveRoot(loaded, snapSource) as any;
+  lRoot.arkPassive = {
+    evolution: [{ id: 1032100, level: 1 }],
+    enlightenment: [],
+  };
+  const lBrac = (lRoot.items || []).find(
+    (i: { slot: string }) => i.slot === "bracelet",
+  );
+  if (lBrac)
+    lBrac.data.stats.push({ type: 3, index: 11011, value: 1, fixed: false });
+  const lRes = evaluateSource(snapSource, loaded, undefined, {
+    dpsSpec: "Judgment",
+  });
+  const cNode = lRes.dpsCritNode.raw;
+  const cBrac = lRes.dpsCritBracelet.raw;
+  const cSyn = lRes.dpsCritSynergy.raw;
+  const cTot = lRes.dpsCritHitTotal.raw as number;
+  const expectTot = 1.12 * 1.015 * 1.08;
+  console.log(
+    "  -- loaded (Critical node 1032100 + bracelet 11011 + Judgment synergy) --",
+  );
+  console.log(
+    `  dpsCritNode          = ${cNode} ${cNode === 0.12 ? "OK" : "MISMATCH (expected 0.12)"}`,
+  );
+  console.log(
+    `  dpsCritBracelet      = ${cBrac} ${cBrac === 0.015 ? "OK" : "MISMATCH (expected 0.015)"}`,
+  );
+  console.log(
+    `  dpsCritSynergy       = ${cSyn} ${cSyn === 0.08 ? "OK (Judgment)" : "MISMATCH (expected 0.08)"}`,
+  );
+  console.log(
+    `  dpsCritHitTotal      = ${cTot} ${Math.abs(cTot - expectTot) < 1e-9 ? "OK (1.12*1.015*1.08)" : `MISMATCH (expected ${expectTot})`}`,
+  );
+
+  // Default: strip crit sources, unknown spec -> multiplier stays 1.
+  const clean = JSON.parse(read("planning/samples/snapshotPayload.json"));
+  const cleanRoot = resolveRoot(clean, snapSource) as any;
+  cleanRoot.arkPassive = { evolution: [], enlightenment: [] };
+  const dRes = evaluateSource(snapSource, clean, undefined, {
+    dpsSpec: "Unknown Spec",
+  });
+  const dTot = dRes.dpsCritHitTotal.raw as number;
+  console.log(
+    `  -- default (no crit sources, unknown spec) --\n  dpsCritHitTotal      = ${dTot} ${dTot === 1 ? "OK (default 1)" : "MISMATCH (expected 1)"}`,
+  );
+} catch (e) {
+  console.log(`  (skipped: ${(e as Error).message})`);
+}
+
+// -- DPS Crit Rate (C24) ------------------------------------------------
+// Additive crit-rate bonus aggregate (default 0). Synthetic: Zealous Smite evo
+// node 1030200 @level 2 (-> 0.24), Sophistication enlightenment 2170020 @level 3
+// (-> 0.15), a bracelet crit-rate line index 11011 (-> 0.05), a Crit combat stat
+// line index 15 value 2794 (-> 1.0), a ring crit-rate line index 74 value 95
+// (-> 0.0095), and dpsSpec "Judgment" (-> synergy 0.10).
+console.log("\n=== DPS CRIT RATE (C24) ===");
+try {
+  const synth = JSON.parse(read("planning/samples/snapshotPayload.json"));
+  const sRoot = resolveRoot(synth, snapSource) as any;
+  sRoot.arkPassive = {
+    evolution: [{ id: 1030200, level: 2 }],
+    enlightenment: [{ id: 2170020, level: 3 }],
+  };
+  const sBrac = (sRoot.items || []).find(
+    (i: { slot: string }) => i.slot === "bracelet",
+  );
+  if (sBrac)
+    sBrac.data.stats.push(
+      { type: 3, index: 11011, value: 1, fixed: false },
+      { type: 2, index: 15, value: 2794, fixed: false },
+      { type: 2, index: 74, value: 95, fixed: false },
+    );
+  const sRes = evaluateSource(snapSource, synth, undefined, {
+    dpsSpec: "Judgment",
+  });
+  const parts = {
+    bracelet: sRes.dpsCritRateBracelet.raw,
+    evo: sRes.dpsCritRateEvo.raw,
+    enl: sRes.dpsCritRateEnlightenment.raw,
+    synergy: sRes.dpsCritRateSynergy.raw,
+    critStat: sRes.dpsCritRateCritStat.raw,
+    ring: sRes.dpsCritRateRing.raw,
+  };
+  const tot = sRes.dpsCritRateTotal.raw as number;
+  const expect = 0.05 + 0.24 + 0.15 + 0.1 + 1.0 + 0.0095;
+  const expected: Record<string, number> = {
+    bracelet: 0.05,
+    evo: 0.24,
+    enl: 0.15,
+    synergy: 0.1,
+    critStat: 1.0,
+    ring: 0.0095,
+  };
+  console.log(
+    "  -- synthetic (Zealous Smite L2 + Sophistication L3 + bracelet 11011 + crit stat 2794 + ring 95 + Judgment) --",
+  );
+  for (const [k, v] of Object.entries(parts))
+    console.log(
+      `  dpsCritRate.${k.padEnd(9)} = ${v} ${Math.abs((v as number) - expected[k]) < 1e-9 ? "OK" : `MISMATCH (expected ${expected[k]})`}`,
+    );
+  console.log(
+    `  dpsCritRateTotal      = ${tot} ${Math.abs(tot - expect) < 1e-9 ? "OK (sum 1.5495)" : `MISMATCH (expected ${expect})`}`,
+  );
+
+  // Default: no crit-rate sources, unknown spec -> 0.
+  const clean = JSON.parse(read("planning/samples/snapshotPayload.json"));
+  const cRoot = resolveRoot(clean, snapSource) as any;
+  cRoot.arkPassive = { evolution: [], enlightenment: [] };
+  for (const it of cRoot.items || [])
+    if (it.data?.stats)
+      it.data.stats = it.data.stats.filter(
+        (s: { index: number }) =>
+          s.index !== 15 &&
+          s.index !== 74 &&
+          !(s.index >= 11011 && s.index <= 11014),
+      );
+  const cRes = evaluateSource(snapSource, clean, undefined, {
+    dpsSpec: "Unknown Spec",
+  });
+  const cTot = cRes.dpsCritRateTotal.raw as number;
+  console.log(
+    `  -- default (no crit-rate sources, unknown spec) --\n  dpsCritRateTotal      = ${cTot} ${cTot === 0 ? "OK (default 0)" : "MISMATCH (expected 0)"}`,
+  );
+} catch (e) {
+  console.log(`  (skipped: ${(e as Error).message})`);
+}
+
 // -- Resolve to cells (party 0 = mirsee's party + snapshot + loadout) ---
 const fieldValues: Record<string, FieldResult> = {
   ...logResultsByParty["0"],

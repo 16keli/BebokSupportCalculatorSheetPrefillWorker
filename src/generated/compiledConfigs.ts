@@ -14,28 +14,32 @@ import E6 from "../../configs/snapshot/expr/gearTier.ts";
 import E7 from "../../configs/snapshot/expr/arkGrid.ts";
 import E8 from "../../configs/snapshot/expr/arkPassive.ts";
 import E9 from "../../configs/snapshot/expr/addDamageParts.ts";
-import E10 from "../../configs/snapshot/expr/combatStats.ts";
-import E11 from "../../configs/snapshot/expr/stoneEngravings.ts";
-import E12 from "../../configs/snapshot/expr/skillGems.ts";
-import E13 from "../../configs/snapshot/expr/classSkills.ts";
-import E14 from "../../configs/snapshot/expr/otherSkills.ts";
-import E15 from "../../configs/snapshot/expr/stoneBonus.ts";
-import E16 from "../../configs/snapshot/expr/braceletCritDmgTier.ts";
-import E17 from "../../configs/snapshot/expr/engravingBooks.ts";
-import E18 from "../../configs/snapshot/expr/awakeningRock.ts";
-import E19 from "../../configs/snapshot/expr/leapCdrCommon.ts";
-import E20 from "../../configs/snapshot/expr/identityDmgGem.ts";
-import E21 from "../../configs/snapshot/expr/tSkillCooldown.ts";
-import E22 from "../../configs/snapshot/expr/skillGem.ts";
-import E23 from "../../configs/snapshot/expr/dpsGems.ts";
-import E24 from "../../configs/snapshot/expr/dpsAddDmgTotal.ts";
-import E25 from "../../configs/spreadsheet/expr/classDisplayName.ts";
-import E26 from "../../configs/spreadsheet/expr/gearTierLabel.ts";
-import E27 from "../../configs/spreadsheet/expr/bossContent.ts";
-import E28 from "../../configs/spreadsheet/expr/orderCoreName.ts";
-import E29 from "../../configs/spreadsheet/expr/coreName.ts";
-import E30 from "../../configs/spreadsheet/expr/statLineText.ts";
-import E31 from "../../configs/spreadsheet/expr/gemLevel.ts";
+import E10 from "../../configs/snapshot/expr/critRateParts.ts";
+import E11 from "../../configs/snapshot/expr/critHitParts.ts";
+import E12 from "../../configs/snapshot/expr/combatStats.ts";
+import E13 from "../../configs/snapshot/expr/stoneEngravings.ts";
+import E14 from "../../configs/snapshot/expr/skillGems.ts";
+import E15 from "../../configs/snapshot/expr/classSkills.ts";
+import E16 from "../../configs/snapshot/expr/otherSkills.ts";
+import E17 from "../../configs/snapshot/expr/stoneBonus.ts";
+import E18 from "../../configs/snapshot/expr/braceletCritDmgTier.ts";
+import E19 from "../../configs/snapshot/expr/engravingBooks.ts";
+import E20 from "../../configs/snapshot/expr/awakeningRock.ts";
+import E21 from "../../configs/snapshot/expr/leapCdrCommon.ts";
+import E22 from "../../configs/snapshot/expr/identityDmgGem.ts";
+import E23 from "../../configs/snapshot/expr/tSkillCooldown.ts";
+import E24 from "../../configs/snapshot/expr/skillGem.ts";
+import E25 from "../../configs/snapshot/expr/dpsGems.ts";
+import E26 from "../../configs/snapshot/expr/dpsAddDmgTotal.ts";
+import E27 from "../../configs/snapshot/expr/dpsCritHitTotal.ts";
+import E28 from "../../configs/snapshot/expr/dpsCritRateTotal.ts";
+import E29 from "../../configs/spreadsheet/expr/classDisplayName.ts";
+import E30 from "../../configs/spreadsheet/expr/gearTierLabel.ts";
+import E31 from "../../configs/spreadsheet/expr/bossContent.ts";
+import E32 from "../../configs/spreadsheet/expr/orderCoreName.ts";
+import E33 from "../../configs/spreadsheet/expr/coreName.ts";
+import E34 from "../../configs/spreadsheet/expr/statLineText.ts";
+import E35 from "../../configs/spreadsheet/expr/gemLevel.ts";
 
 // Reference datasets (data/<name>.json) inlined ONCE and shared by every source
 // / sheet that lists them in refData, via REFS[name]. Avoids duplicating large
@@ -51045,6 +51049,24 @@ const REFS: Record<string, unknown> = {
     }
   }
 },
+  "crit_hit_synergy": {
+  "Control": 0.08,
+  "Judgment": 0.08,
+  "Pinacle": 0.08,
+  "Shining Knight": 0.08
+},
+  "crit_rate_bracelet": {
+  "11011": 0.05,
+  "11012": 0.042,
+  "11013": 0.034,
+  "11014": 0.026
+},
+  "crit_rate_enlightenment": {
+  "2170020": 0.05
+},
+  "crit_rate_synergy": {
+  "Judgment": 0.1
+},
   "encounters": {
   "Valtan": {
     "Valtan G1": ["Dark Mountain Predator", "Destroyer Lucas", "Leader Lugaru"],
@@ -59164,44 +59186,44 @@ const REFS: Record<string, unknown> = {
 export const COMPILED_BUNDLES: Record<string, CompiledBundle> = {
   "bebok-3.8.1": {
     key: "bebok-3.8.1",
-    sheet: {"key":"bebok-3.8.1","version":"3.8.1","templateSheet":"https://docs.google.com/spreadsheets/d/1VrLqJFC0629j1MdCmhi3op52V8nU4WCVK-RTsZBp35g","sheetTitle":"","sheetTab":"Sup buff calc v3.81","comment":"Maps target cells (A1 notation) to field ids produced by the snapshot/log datasource configs. The field id is the common key joining sheet <-> datasource. A cell may also carry a `transform`/`transformFile` that reshapes the field's raw value into the written value (sheet-side, so datasources stay canonical and other spreadsheets can render the same data differently); transforms read `refData` below as `ref`.","refData":["stat_lines","encounters","cores","core_lines"],"inputs":[{"id":"rosterSpec","label":"Roster-wide Specialization","type":"number","default":75,"section":"Specialization / Swiftness","help":"Flat Specialization from roster bonuses."},{"id":"rosterSwift","label":"Roster-wide Swiftness","type":"number","default":77,"section":"Specialization / Swiftness","help":"Flat Swiftness from roster bonuses."},{"id":"pet","label":"Pet stat bonus (+160)","type":"select","default":"swiftness","section":"Specialization / Swiftness","options":[{"value":"spec","label":"Specialization"},{"value":"swiftness","label":"Swiftness"},{"value":"other","label":"Other (no spec/swift bonus)"}],"help":"Pet adds +160 to the selected stat. Defaults to Specialization when the evolution spec allocation is maxed (30), otherwise Swiftness."},{"id":"skinBonus","label":"Skin bonus","type":"range","default":8,"min":0,"max":8,"step":0.5,"unit":"%","section":"Main stat (str/dex/int)","help":"Main stat % from skins."},{"id":"stronghold","label":"Stronghold farm bonus","type":"select","default":"1.0","section":"Main stat (str/dex/int)","options":[{"value":"0","label":"0%"},{"value":"0.4","label":"0.4%"},{"value":"0.7","label":"0.7%"},{"value":"1.0","label":"1.0%"}],"help":"Main stat % from stronghold farm."},{"id":"dpsStronghold","label":"DPS stronghold farm bonus","type":"select","default":"1.0","section":"DPS Additional Damage","options":[{"value":"0","label":"0%"},{"value":"0.4","label":"0.4%"},{"value":"0.7","label":"0.7%"},{"value":"1.0","label":"1.0%"}],"help":"Stronghold farm additional damage for the DPS (feeds the DPS Additional Damage total, C20)."}],"cells":[{"cell":"F2","field":"class","transformFile":"expr/classDisplayName.ts"},{"cell":"E6","field":"headGearTier","transformFile":"expr/gearTierLabel.ts","transformArg":"Headpiece"},{"cell":"E7","field":"shoulderGearTier","transformFile":"expr/gearTierLabel.ts","transformArg":"Shoulderpiece"},{"cell":"E8","field":"chestGearTier","transformFile":"expr/gearTierLabel.ts","transformArg":"Chestpiece"},{"cell":"E9","field":"pantsGearTier","transformFile":"expr/gearTierLabel.ts","transformArg":"Pants"},{"cell":"E10","field":"gloveGearTier","transformFile":"expr/gearTierLabel.ts","transformArg":"Gloves"},{"cell":"E11","field":"weaponGearTier","transformFile":"expr/gearTierLabel.ts","transformArg":"Weapon"},{"cell":"F6","field":"headHoning"},{"cell":"G6","field":"headAdvHoning"},{"cell":"F7","field":"shoulderHoning"},{"cell":"G7","field":"shoulderAdvHoning"},{"cell":"F8","field":"chestHoning"},{"cell":"G8","field":"chestAdvHoning"},{"cell":"F9","field":"pantsHoning"},{"cell":"G9","field":"pantsAdvHoning"},{"cell":"F10","field":"gloveHoning"},{"cell":"G10","field":"gloveAdvHoning"},{"cell":"F11","field":"weaponHoning"},{"cell":"G11","field":"weaponAdvHoning"},{"cell":"F14","field":"specStat"},{"cell":"F15","field":"swiftStat"},{"cell":"F16","field":"class","transform":"String(raw).toLowerCase() === 'bard' ? '15%' : ''","comment":"Identity Base: fixed 15% for bard only; blank for other classes (manual input)."},{"cell":"F18","field":"skinBonus","format":"percent1","comment":"Main-stat % from skin bonus (advanced input, 0-8%)."},{"cell":"BJ3","field":"strongholdBonus","format":"percent1","comment":"Main-stat % from stronghold farm bonus (advanced input)."},{"cell":"F19","field":"stoneBonus","transform":"raw === '' || raw == null ? '' : (+raw >= 5 ? '9/7 and better' : 'worse than 9/7')","comment":"Sum of activated engraving levels on the ability stone (snapshot, penalties 800-803 excluded): >=5 -> '9/7 and better', else 'worse than 9/7'."},{"cell":"F21","field":"karmaEvolution","transform":"raw === '' || raw == null ? '' : [0,1,5,9,13,17,21].filter(b => +raw >= b).length - 1","comment":"Karma evolution RANK from the raw level (snapshot): rank = index of the highest breakpoint [0,1,5,9,13,17,21] <= level, i.e. 0->0, 1-4->1, 5-8->2, 9-12->3, 13-16->4, 17-20->5, 21+->6."},{"cell":"F22","field":"karmaEnlightenment"},{"cell":"L31","field":"bossName","transformFile":"expr/bossContent.ts","comment":"Boss name -> 'Kazeros Raid' when the boss belongs to a raid in [Echidna .. Final Act: Kazeros] (data/encounters.json order); otherwise the raw boss name. See expr/bossContent.ts."},{"cell":"Z4","field":"astroBrand"},{"cell":"Z5","field":"astroAllyAtk"},{"cell":"Z6","field":"astroAllyDamage"},{"cell":"Y15","field":"orderSunCore","transformFile":"expr/orderCoreName.ts","comment":"Order Sun core id -> curated string via data/core_lines.json (falls back to raw id). See expr/orderCoreName.ts."},{"cell":"AB11","field":"orderSunPoints"},{"cell":"Y25","field":"orderMoonCore","transformFile":"expr/orderCoreName.ts"},{"cell":"AB21","field":"orderMoonPoints"},{"cell":"AF4","field":"chaosSunCore","transformFile":"expr/coreName.ts","comment":"Chaos Sun core id -> '<category> Core: <title> (<rarity>)' via data/cores.json. See expr/coreName.ts."},{"cell":"AG4","field":"chaosSunPoints"},{"cell":"AF13","field":"chaosMoonCore","transformFile":"expr/coreName.ts"},{"cell":"AG13","field":"chaosMoonPoints"},{"cell":"AF22","field":"chaosStarCore","transformFile":"expr/coreName.ts"},{"cell":"AG22","field":"chaosStarPoints"},{"cell":"AM6","field":"enlightMainT1"},{"cell":"AM7","field":"enlightMainT2"},{"cell":"AM8","field":"enlightMainT3"},{"cell":"AM9","field":"enlightMainT4"},{"cell":"AM12","field":"enlightSideT3"},{"cell":"AM13","field":"enlightSideT4"},{"cell":"AM17","field":"evoLuminary"},{"cell":"AM18","field":"evoAdvance"},{"cell":"AM19","field":"evoPrayer"},{"cell":"AM23","field":"evoBoundlessMp"},{"cell":"AM24","field":"evoGoddessBlessings"},{"cell":"AM29","field":"evoUnlimitedMagick"},{"cell":"AM30","field":"evoPassionateDance"},{"cell":"AU3","field":"neckStats","transformFile":"expr/statLineText.ts","transformContext":"necklace","transformArg":0,"comment":"Necklace rolled lines in item order (base stats dropped); transformArg picks the Nth. See expr/statLineText.ts + data/stat_lines.json."},{"cell":"AU4","field":"neckStats","transformFile":"expr/statLineText.ts","transformContext":"necklace","transformArg":1},{"cell":"AU5","field":"neckStats","transformFile":"expr/statLineText.ts","transformContext":"necklace","transformArg":2},{"cell":"AU6","field":"necklaceMain"},{"cell":"AU9","field":"ear1Stats","transformFile":"expr/statLineText.ts","transformContext":"earring","transformArg":0},{"cell":"AU10","field":"ear1Stats","transformFile":"expr/statLineText.ts","transformContext":"earring","transformArg":1},{"cell":"AU11","field":"ear1Stats","transformFile":"expr/statLineText.ts","transformContext":"earring","transformArg":2},{"cell":"AU12","field":"ear1Main"},{"cell":"AW9","field":"ear2Stats","transformFile":"expr/statLineText.ts","transformContext":"earring","transformArg":0},{"cell":"AW10","field":"ear2Stats","transformFile":"expr/statLineText.ts","transformContext":"earring","transformArg":1},{"cell":"AW11","field":"ear2Stats","transformFile":"expr/statLineText.ts","transformContext":"earring","transformArg":2},{"cell":"AW12","field":"ear2Main"},{"cell":"AU15","field":"ring1Stats","transformFile":"expr/statLineText.ts","transformContext":"ring","transformArg":0},{"cell":"AU16","field":"ring1Stats","transformFile":"expr/statLineText.ts","transformContext":"ring","transformArg":1},{"cell":"AU17","field":"ring1Stats","transformFile":"expr/statLineText.ts","transformContext":"ring","transformArg":2},{"cell":"AU18","field":"ring1Main"},{"cell":"AW15","field":"ring2Stats","transformFile":"expr/statLineText.ts","transformContext":"ring","transformArg":0},{"cell":"AW16","field":"ring2Stats","transformFile":"expr/statLineText.ts","transformContext":"ring","transformArg":1},{"cell":"AW17","field":"ring2Stats","transformFile":"expr/statLineText.ts","transformContext":"ring","transformArg":2},{"cell":"AW18","field":"ring2Main"},{"cell":"AU22","field":"braceletSpec"},{"cell":"AU23","field":"braceletSwift"},{"cell":"AU24","field":"braceletMain"},{"cell":"AU25","field":"braceletStats","transformFile":"expr/statLineText.ts","transformContext":"bracelet","transformArg":0,"comment":"Bracelet effect lines: statLineText.js keeps the stat-line objects present in data/stat_lines.json, renders them to text, and transformArg picks the Nth (0-based) so AU25-28 pack contiguously."},{"cell":"AU26","field":"braceletStats","transformFile":"expr/statLineText.ts","transformContext":"bracelet","transformArg":1},{"cell":"AU27","field":"braceletStats","transformFile":"expr/statLineText.ts","transformContext":"bracelet","transformArg":2},{"cell":"AU28","field":"braceletStats","transformFile":"expr/statLineText.ts","transformContext":"bracelet","transformArg":3},{"cell":"BB3","field":"ap1SkillDmgGem"},{"cell":"BC3","field":"ap1SkillCdrGem"},{"cell":"BD3","field":"ap1Cooldown","transform":"raw === '' || raw == null ? '' : +raw / 1000"},{"cell":"BB4","field":"ap2SkillDmgGem"},{"cell":"BC4","field":"ap2SkillCdrGem"},{"cell":"BD4","field":"ap2Cooldown","transform":"raw === '' || raw == null ? '' : +raw / 1000"},{"cell":"BB5","field":"brandSkillDmgGem"},{"cell":"BC5","field":"brandSkillCdrGem"},{"cell":"BD5","field":"brandCooldown","transform":"raw === '' || raw == null ? '' : +raw / 1000"},{"cell":"BB6","field":"skill6DmgGem"},{"cell":"BC6","field":"skill6CdrGem"},{"cell":"BD6","field":"skill6Cooldown","transform":"raw === '' || raw == null ? '' : +raw / 1000"},{"cell":"BB7","field":"skill7DmgGem"},{"cell":"BC7","field":"skill7CdrGem"},{"cell":"BD7","field":"skill7Cooldown","transform":"raw === '' || raw == null ? '' : +raw / 1000"},{"cell":"BB8","field":"skill8DmgGem"},{"cell":"BC8","field":"skill8CdrGem"},{"cell":"BD8","field":"skill8Cooldown","transform":"raw === '' || raw == null ? '' : +raw / 1000"},{"cell":"BB9","field":"skill9DmgGem"},{"cell":"BC9","field":"skill9CdrGem"},{"cell":"BD9","field":"skill9Cooldown","transform":"raw === '' || raw == null ? '' : +raw / 1000"},{"cell":"BB10","field":"skill10DmgGem"},{"cell":"BC10","field":"skill10CdrGem"},{"cell":"BD10","field":"skill10Cooldown","transform":"raw === '' || raw == null ? '' : +raw / 1000"},{"cell":"BD11","field":"tSkillCooldown","transform":"raw === '' || raw == null ? '' : +raw / 1000"},{"cell":"BB11","field":"identityDmgGem"},{"cell":"BB17","field":"ap1BuffLevel"},{"cell":"BC17","field":"apBuffUptimeProportion","format":"percent2","comment":"AP-buff uptime proportion (log, via attack-power buff categorization)."},{"cell":"BB18","field":"ap2BuffLevel"},{"cell":"BB21","field":"magickStreamBooks","transform":"raw === '' || raw == null ? '' : (raw === 'legendary' ? 'Legendary' : 'Relic ' + raw)","comment":"Magick Stream engraving (snapshot token): 'legendary' -> 'Legendary', else relic level -> 'Relic 5/10/15/20'."},{"cell":"BB24","field":"awakeningBooks","transform":"raw === '' || raw == null ? '' : (raw === 'legendary' ? 'Legendary' : 'Relic ' + raw)","comment":"Awakening engraving (snapshot token): 'legendary' -> 'Legendary', else relic level -> 'Relic 5/10/15/20'."},{"cell":"BC24","field":"awakeningRock","transform":"raw === '' || raw == null ? '' : 'Stone Lv. ' + raw","comment":"Awakening engraving (id 255) activation level (snapshot, 0-4 at [6,7,9,10] nodes) -> 'Stone Lv. N'."},{"cell":"BB27","field":"leapCdrCommon","transform":"raw === '' || raw == null ? '' : (2 * +raw) + '%'","comment":"Common leap CDR node level (snapshot) -> '{2 * value}%', e.g. 5 -> '10%'."},{"cell":"BB28","field":"leapCdrArtist"},{"cell":"BJ11","field":"apBuffUptime","format":"percent2"},{"cell":"BJ12","field":"brandUptime","format":"percent2"},{"cell":"BJ13","field":"identityUptime","format":"percent2"},{"cell":"BJ14","field":"hatUptime","format":"percent2"},{"cell":"BJ15","field":"majorChordWingsUptime","format":"percent2"},{"cell":"BJ16","field":"cheersUptime","format":"percent2"},{"cell":"BJ17","field":"strengthOrbUptime","format":"percent2"},{"cell":"BJ18","field":"flashOrbUptime","format":"percent2"},{"comment":"-- Reference DPS player (character='dps') -> 'DPS players data (Serca)' tab. Filled from the user-selected DPS's snapshot (default: highest-combat-power non-support member); reuses the same snapshot fields as the support build.","cell":"C4","field":"headHoning","character":"dps","sheetTab":"DPS players data (Serca)"},{"cell":"C5","field":"shoulderHoning","character":"dps","sheetTab":"DPS players data (Serca)"},{"cell":"C6","field":"chestHoning","character":"dps","sheetTab":"DPS players data (Serca)"},{"cell":"C7","field":"pantsHoning","character":"dps","sheetTab":"DPS players data (Serca)"},{"cell":"C8","field":"gloveHoning","character":"dps","sheetTab":"DPS players data (Serca)"},{"cell":"C9","field":"weaponHoning","character":"dps","sheetTab":"DPS players data (Serca)"},{"cell":"C11","field":"stoneBonus","character":"dps","sheetTab":"DPS players data (Serca)","transform":"raw === '' || raw == null ? '' : (+raw >= 5 ? '9/7 and better' : 'worse than 9/7')","comment":"Same ability-stone treatment as the support's F19: sum of activated engraving levels >=5 -> '9/7 and better', else 'worse than 9/7'."},{"cell":"C20","field":"dpsAddDmgTotal","character":"dps","sheetTab":"DPS players data (Serca)","format":"percent1","comment":"Additional Damage total: additive sum (fraction) of the DPS's sources (weapon quality + Master evolution node + ark-grid side lines + 'Stable Attack' core + bracelet + stronghold). Computed in the DPS snapshot pass (dps:dpsAddDmgTotal); see configs/snapshot/expr/addDamageParts.ts."},{"comment":"H3:I11 gem block - the DPS's gemmed skills top-down (dpsGemmedSkills, gem-equip order, ap1/ap2/brand NOT excluded). Each cell shares field dpsGemmedSkills + expr/gemLevel.ts: transformArg = row (0-8), transformContext = 'dmg' (H, damage gem) or 'cdr' (I, cooldown gem). Rows beyond the DPS's gem count stay blank.","cell":"H3","field":"dpsGemmedSkills","character":"dps","sheetTab":"DPS players data (Serca)","transformFile":"expr/gemLevel.ts","transformContext":"dmg","transformArg":0},{"cell":"I3","field":"dpsGemmedSkills","character":"dps","sheetTab":"DPS players data (Serca)","transformFile":"expr/gemLevel.ts","transformContext":"cdr","transformArg":0},{"cell":"H4","field":"dpsGemmedSkills","character":"dps","sheetTab":"DPS players data (Serca)","transformFile":"expr/gemLevel.ts","transformContext":"dmg","transformArg":1},{"cell":"I4","field":"dpsGemmedSkills","character":"dps","sheetTab":"DPS players data (Serca)","transformFile":"expr/gemLevel.ts","transformContext":"cdr","transformArg":1},{"cell":"H5","field":"dpsGemmedSkills","character":"dps","sheetTab":"DPS players data (Serca)","transformFile":"expr/gemLevel.ts","transformContext":"dmg","transformArg":2},{"cell":"I5","field":"dpsGemmedSkills","character":"dps","sheetTab":"DPS players data (Serca)","transformFile":"expr/gemLevel.ts","transformContext":"cdr","transformArg":2},{"cell":"H6","field":"dpsGemmedSkills","character":"dps","sheetTab":"DPS players data (Serca)","transformFile":"expr/gemLevel.ts","transformContext":"dmg","transformArg":3},{"cell":"I6","field":"dpsGemmedSkills","character":"dps","sheetTab":"DPS players data (Serca)","transformFile":"expr/gemLevel.ts","transformContext":"cdr","transformArg":3},{"cell":"H7","field":"dpsGemmedSkills","character":"dps","sheetTab":"DPS players data (Serca)","transformFile":"expr/gemLevel.ts","transformContext":"dmg","transformArg":4},{"cell":"I7","field":"dpsGemmedSkills","character":"dps","sheetTab":"DPS players data (Serca)","transformFile":"expr/gemLevel.ts","transformContext":"cdr","transformArg":4},{"cell":"H8","field":"dpsGemmedSkills","character":"dps","sheetTab":"DPS players data (Serca)","transformFile":"expr/gemLevel.ts","transformContext":"dmg","transformArg":5},{"cell":"I8","field":"dpsGemmedSkills","character":"dps","sheetTab":"DPS players data (Serca)","transformFile":"expr/gemLevel.ts","transformContext":"cdr","transformArg":5},{"cell":"H9","field":"dpsGemmedSkills","character":"dps","sheetTab":"DPS players data (Serca)","transformFile":"expr/gemLevel.ts","transformContext":"dmg","transformArg":6},{"cell":"I9","field":"dpsGemmedSkills","character":"dps","sheetTab":"DPS players data (Serca)","transformFile":"expr/gemLevel.ts","transformContext":"cdr","transformArg":6},{"cell":"H10","field":"dpsGemmedSkills","character":"dps","sheetTab":"DPS players data (Serca)","transformFile":"expr/gemLevel.ts","transformContext":"dmg","transformArg":7},{"cell":"I10","field":"dpsGemmedSkills","character":"dps","sheetTab":"DPS players data (Serca)","transformFile":"expr/gemLevel.ts","transformContext":"cdr","transformArg":7},{"cell":"H11","field":"dpsGemmedSkills","character":"dps","sheetTab":"DPS players data (Serca)","transformFile":"expr/gemLevel.ts","transformContext":"dmg","transformArg":8},{"cell":"I11","field":"dpsGemmedSkills","character":"dps","sheetTab":"DPS players data (Serca)","transformFile":"expr/gemLevel.ts","transformContext":"cdr","transformArg":8}]},
+    sheet: {"key":"bebok-3.8.1","version":"3.8.1","templateSheet":"https://docs.google.com/spreadsheets/d/1VrLqJFC0629j1MdCmhi3op52V8nU4WCVK-RTsZBp35g","sheetTitle":"","sheetTab":"Sup buff calc v3.81","comment":"Maps target cells (A1 notation) to field ids produced by the snapshot/log datasource configs. The field id is the common key joining sheet <-> datasource. A cell may also carry a `transform`/`transformFile` that reshapes the field's raw value into the written value (sheet-side, so datasources stay canonical and other spreadsheets can render the same data differently); transforms read `refData` below as `ref`.","refData":["stat_lines","encounters","cores","core_lines"],"inputs":[{"id":"rosterSpec","label":"Roster-wide Specialization","type":"number","default":75,"section":"Specialization / Swiftness","help":"Flat Specialization from roster bonuses."},{"id":"rosterSwift","label":"Roster-wide Swiftness","type":"number","default":77,"section":"Specialization / Swiftness","help":"Flat Swiftness from roster bonuses."},{"id":"pet","label":"Pet stat bonus (+160)","type":"select","default":"swiftness","section":"Specialization / Swiftness","options":[{"value":"spec","label":"Specialization"},{"value":"swiftness","label":"Swiftness"},{"value":"other","label":"Other (no spec/swift bonus)"}],"help":"Pet adds +160 to the selected stat. Defaults to Specialization when the evolution spec allocation is maxed (30), otherwise Swiftness."},{"id":"skinBonus","label":"Skin bonus","type":"range","default":8,"min":0,"max":8,"step":0.5,"unit":"%","section":"Main stat (str/dex/int)","help":"Main stat % from skins."},{"id":"stronghold","label":"Stronghold farm bonus","type":"select","default":"1.0","section":"Main stat (str/dex/int)","options":[{"value":"0","label":"0%"},{"value":"0.4","label":"0.4%"},{"value":"0.7","label":"0.7%"},{"value":"1.0","label":"1.0%"}],"help":"Main stat % from stronghold farm."},{"id":"dpsStronghold","label":"DPS stronghold farm bonus","type":"select","default":"1.0","section":"DPS Additional Damage","options":[{"value":"0","label":"0%"},{"value":"0.4","label":"0.4%"},{"value":"0.7","label":"0.7%"},{"value":"1.0","label":"1.0%"}],"help":"Stronghold farm additional damage for the DPS (feeds the DPS Additional Damage total, C20)."}],"cells":[{"cell":"F2","field":"class","transformFile":"expr/classDisplayName.ts"},{"cell":"E6","field":"headGearTier","transformFile":"expr/gearTierLabel.ts","transformArg":"Headpiece"},{"cell":"E7","field":"shoulderGearTier","transformFile":"expr/gearTierLabel.ts","transformArg":"Shoulderpiece"},{"cell":"E8","field":"chestGearTier","transformFile":"expr/gearTierLabel.ts","transformArg":"Chestpiece"},{"cell":"E9","field":"pantsGearTier","transformFile":"expr/gearTierLabel.ts","transformArg":"Pants"},{"cell":"E10","field":"gloveGearTier","transformFile":"expr/gearTierLabel.ts","transformArg":"Gloves"},{"cell":"E11","field":"weaponGearTier","transformFile":"expr/gearTierLabel.ts","transformArg":"Weapon"},{"cell":"F6","field":"headHoning"},{"cell":"G6","field":"headAdvHoning"},{"cell":"F7","field":"shoulderHoning"},{"cell":"G7","field":"shoulderAdvHoning"},{"cell":"F8","field":"chestHoning"},{"cell":"G8","field":"chestAdvHoning"},{"cell":"F9","field":"pantsHoning"},{"cell":"G9","field":"pantsAdvHoning"},{"cell":"F10","field":"gloveHoning"},{"cell":"G10","field":"gloveAdvHoning"},{"cell":"F11","field":"weaponHoning"},{"cell":"G11","field":"weaponAdvHoning"},{"cell":"F14","field":"specStat"},{"cell":"F15","field":"swiftStat"},{"cell":"F16","field":"class","transform":"String(raw).toLowerCase() === 'bard' ? '15%' : ''","comment":"Identity Base: fixed 15% for bard only; blank for other classes (manual input)."},{"cell":"F18","field":"skinBonus","format":"percent1","comment":"Main-stat % from skin bonus (advanced input, 0-8%)."},{"cell":"BJ3","field":"strongholdBonus","format":"percent1","comment":"Main-stat % from stronghold farm bonus (advanced input)."},{"cell":"F19","field":"stoneBonus","transform":"raw === '' || raw == null ? '' : (+raw >= 5 ? '9/7 and better' : 'worse than 9/7')","comment":"Sum of activated engraving levels on the ability stone (snapshot, penalties 800-803 excluded): >=5 -> '9/7 and better', else 'worse than 9/7'."},{"cell":"F21","field":"karmaEvolution","transform":"raw === '' || raw == null ? '' : [0,1,5,9,13,17,21].filter(b => +raw >= b).length - 1","comment":"Karma evolution RANK from the raw level (snapshot): rank = index of the highest breakpoint [0,1,5,9,13,17,21] <= level, i.e. 0->0, 1-4->1, 5-8->2, 9-12->3, 13-16->4, 17-20->5, 21+->6."},{"cell":"F22","field":"karmaEnlightenment"},{"cell":"L31","field":"bossName","transformFile":"expr/bossContent.ts","comment":"Boss name -> 'Kazeros Raid' when the boss belongs to a raid in [Echidna .. Final Act: Kazeros] (data/encounters.json order); otherwise the raw boss name. See expr/bossContent.ts."},{"cell":"Z4","field":"astroBrand"},{"cell":"Z5","field":"astroAllyAtk"},{"cell":"Z6","field":"astroAllyDamage"},{"cell":"Y15","field":"orderSunCore","transformFile":"expr/orderCoreName.ts","comment":"Order Sun core id -> curated string via data/core_lines.json (falls back to raw id). See expr/orderCoreName.ts."},{"cell":"AB11","field":"orderSunPoints"},{"cell":"Y25","field":"orderMoonCore","transformFile":"expr/orderCoreName.ts"},{"cell":"AB21","field":"orderMoonPoints"},{"cell":"AF4","field":"chaosSunCore","transformFile":"expr/coreName.ts","comment":"Chaos Sun core id -> '<category> Core: <title> (<rarity>)' via data/cores.json. See expr/coreName.ts."},{"cell":"AG4","field":"chaosSunPoints"},{"cell":"AF13","field":"chaosMoonCore","transformFile":"expr/coreName.ts"},{"cell":"AG13","field":"chaosMoonPoints"},{"cell":"AF22","field":"chaosStarCore","transformFile":"expr/coreName.ts"},{"cell":"AG22","field":"chaosStarPoints"},{"cell":"AM6","field":"enlightMainT1"},{"cell":"AM7","field":"enlightMainT2"},{"cell":"AM8","field":"enlightMainT3"},{"cell":"AM9","field":"enlightMainT4"},{"cell":"AM12","field":"enlightSideT3"},{"cell":"AM13","field":"enlightSideT4"},{"cell":"AM17","field":"evoLuminary"},{"cell":"AM18","field":"evoAdvance"},{"cell":"AM19","field":"evoPrayer"},{"cell":"AM23","field":"evoBoundlessMp"},{"cell":"AM24","field":"evoGoddessBlessings"},{"cell":"AM29","field":"evoUnlimitedMagick"},{"cell":"AM30","field":"evoPassionateDance"},{"cell":"AU3","field":"neckStats","transformFile":"expr/statLineText.ts","transformContext":"necklace","transformArg":0,"comment":"Necklace rolled lines in item order (base stats dropped); transformArg picks the Nth. See expr/statLineText.ts + data/stat_lines.json."},{"cell":"AU4","field":"neckStats","transformFile":"expr/statLineText.ts","transformContext":"necklace","transformArg":1},{"cell":"AU5","field":"neckStats","transformFile":"expr/statLineText.ts","transformContext":"necklace","transformArg":2},{"cell":"AU6","field":"necklaceMain"},{"cell":"AU9","field":"ear1Stats","transformFile":"expr/statLineText.ts","transformContext":"earring","transformArg":0},{"cell":"AU10","field":"ear1Stats","transformFile":"expr/statLineText.ts","transformContext":"earring","transformArg":1},{"cell":"AU11","field":"ear1Stats","transformFile":"expr/statLineText.ts","transformContext":"earring","transformArg":2},{"cell":"AU12","field":"ear1Main"},{"cell":"AW9","field":"ear2Stats","transformFile":"expr/statLineText.ts","transformContext":"earring","transformArg":0},{"cell":"AW10","field":"ear2Stats","transformFile":"expr/statLineText.ts","transformContext":"earring","transformArg":1},{"cell":"AW11","field":"ear2Stats","transformFile":"expr/statLineText.ts","transformContext":"earring","transformArg":2},{"cell":"AW12","field":"ear2Main"},{"cell":"AU15","field":"ring1Stats","transformFile":"expr/statLineText.ts","transformContext":"ring","transformArg":0},{"cell":"AU16","field":"ring1Stats","transformFile":"expr/statLineText.ts","transformContext":"ring","transformArg":1},{"cell":"AU17","field":"ring1Stats","transformFile":"expr/statLineText.ts","transformContext":"ring","transformArg":2},{"cell":"AU18","field":"ring1Main"},{"cell":"AW15","field":"ring2Stats","transformFile":"expr/statLineText.ts","transformContext":"ring","transformArg":0},{"cell":"AW16","field":"ring2Stats","transformFile":"expr/statLineText.ts","transformContext":"ring","transformArg":1},{"cell":"AW17","field":"ring2Stats","transformFile":"expr/statLineText.ts","transformContext":"ring","transformArg":2},{"cell":"AW18","field":"ring2Main"},{"cell":"AU22","field":"braceletSpec"},{"cell":"AU23","field":"braceletSwift"},{"cell":"AU24","field":"braceletMain"},{"cell":"AU25","field":"braceletStats","transformFile":"expr/statLineText.ts","transformContext":"bracelet","transformArg":0,"comment":"Bracelet effect lines: statLineText.js keeps the stat-line objects present in data/stat_lines.json, renders them to text, and transformArg picks the Nth (0-based) so AU25-28 pack contiguously."},{"cell":"AU26","field":"braceletStats","transformFile":"expr/statLineText.ts","transformContext":"bracelet","transformArg":1},{"cell":"AU27","field":"braceletStats","transformFile":"expr/statLineText.ts","transformContext":"bracelet","transformArg":2},{"cell":"AU28","field":"braceletStats","transformFile":"expr/statLineText.ts","transformContext":"bracelet","transformArg":3},{"cell":"BB3","field":"ap1SkillDmgGem"},{"cell":"BC3","field":"ap1SkillCdrGem"},{"cell":"BD3","field":"ap1Cooldown","transform":"raw === '' || raw == null ? '' : +raw / 1000"},{"cell":"BB4","field":"ap2SkillDmgGem"},{"cell":"BC4","field":"ap2SkillCdrGem"},{"cell":"BD4","field":"ap2Cooldown","transform":"raw === '' || raw == null ? '' : +raw / 1000"},{"cell":"BB5","field":"brandSkillDmgGem"},{"cell":"BC5","field":"brandSkillCdrGem"},{"cell":"BD5","field":"brandCooldown","transform":"raw === '' || raw == null ? '' : +raw / 1000"},{"cell":"BB6","field":"skill6DmgGem"},{"cell":"BC6","field":"skill6CdrGem"},{"cell":"BD6","field":"skill6Cooldown","transform":"raw === '' || raw == null ? '' : +raw / 1000"},{"cell":"BB7","field":"skill7DmgGem"},{"cell":"BC7","field":"skill7CdrGem"},{"cell":"BD7","field":"skill7Cooldown","transform":"raw === '' || raw == null ? '' : +raw / 1000"},{"cell":"BB8","field":"skill8DmgGem"},{"cell":"BC8","field":"skill8CdrGem"},{"cell":"BD8","field":"skill8Cooldown","transform":"raw === '' || raw == null ? '' : +raw / 1000"},{"cell":"BB9","field":"skill9DmgGem"},{"cell":"BC9","field":"skill9CdrGem"},{"cell":"BD9","field":"skill9Cooldown","transform":"raw === '' || raw == null ? '' : +raw / 1000"},{"cell":"BB10","field":"skill10DmgGem"},{"cell":"BC10","field":"skill10CdrGem"},{"cell":"BD10","field":"skill10Cooldown","transform":"raw === '' || raw == null ? '' : +raw / 1000"},{"cell":"BD11","field":"tSkillCooldown","transform":"raw === '' || raw == null ? '' : +raw / 1000"},{"cell":"BB11","field":"identityDmgGem"},{"cell":"BB17","field":"ap1BuffLevel"},{"cell":"BC17","field":"apBuffUptimeProportion","format":"percent2","comment":"AP-buff uptime proportion (log, via attack-power buff categorization)."},{"cell":"BB18","field":"ap2BuffLevel"},{"cell":"BB21","field":"magickStreamBooks","transform":"raw === '' || raw == null ? '' : (raw === 'legendary' ? 'Legendary' : 'Relic ' + raw)","comment":"Magick Stream engraving (snapshot token): 'legendary' -> 'Legendary', else relic level -> 'Relic 5/10/15/20'."},{"cell":"BB24","field":"awakeningBooks","transform":"raw === '' || raw == null ? '' : (raw === 'legendary' ? 'Legendary' : 'Relic ' + raw)","comment":"Awakening engraving (snapshot token): 'legendary' -> 'Legendary', else relic level -> 'Relic 5/10/15/20'."},{"cell":"BC24","field":"awakeningRock","transform":"raw === '' || raw == null ? '' : 'Stone Lv. ' + raw","comment":"Awakening engraving (id 255) activation level (snapshot, 0-4 at [6,7,9,10] nodes) -> 'Stone Lv. N'."},{"cell":"BB27","field":"leapCdrCommon","transform":"raw === '' || raw == null ? '' : (2 * +raw) + '%'","comment":"Common leap CDR node level (snapshot) -> '{2 * value}%', e.g. 5 -> '10%'."},{"cell":"BB28","field":"leapCdrArtist"},{"cell":"BJ11","field":"apBuffUptime","format":"percent2"},{"cell":"BJ12","field":"brandUptime","format":"percent2"},{"cell":"BJ13","field":"identityUptime","format":"percent2"},{"cell":"BJ14","field":"hatUptime","format":"percent2"},{"cell":"BJ15","field":"majorChordWingsUptime","format":"percent2"},{"cell":"BJ16","field":"cheersUptime","format":"percent2"},{"cell":"BJ17","field":"strengthOrbUptime","format":"percent2"},{"cell":"BJ18","field":"flashOrbUptime","format":"percent2"},{"comment":"-- Reference DPS player (character='dps') -> 'DPS players data (Serca)' tab. Filled from the user-selected DPS's snapshot (default: highest-combat-power non-support member); reuses the same snapshot fields as the support build.","cell":"C4","field":"headHoning","character":"dps","sheetTab":"DPS players data (Serca)"},{"cell":"C5","field":"shoulderHoning","character":"dps","sheetTab":"DPS players data (Serca)"},{"cell":"C6","field":"chestHoning","character":"dps","sheetTab":"DPS players data (Serca)"},{"cell":"C7","field":"pantsHoning","character":"dps","sheetTab":"DPS players data (Serca)"},{"cell":"C8","field":"gloveHoning","character":"dps","sheetTab":"DPS players data (Serca)"},{"cell":"C9","field":"weaponHoning","character":"dps","sheetTab":"DPS players data (Serca)"},{"cell":"C11","field":"stoneBonus","character":"dps","sheetTab":"DPS players data (Serca)","transform":"raw === '' || raw == null ? '' : (+raw >= 5 ? '9/7 and better' : 'worse than 9/7')","comment":"Same ability-stone treatment as the support's F19: sum of activated engraving levels >=5 -> '9/7 and better', else 'worse than 9/7'."},{"cell":"C20","field":"dpsAddDmgTotal","character":"dps","sheetTab":"DPS players data (Serca)","format":"percent1","comment":"Additional Damage total: additive sum (fraction) of the DPS's sources (weapon quality + Master evolution node + ark-grid side lines + 'Stable Attack' core + bracelet + stronghold). Computed in the DPS snapshot pass (dps:dpsAddDmgTotal); see configs/snapshot/expr/addDamageParts.ts."},{"cell":"C22","field":"dpsCritHitTotal","character":"dps","sheetTab":"DPS players data (Serca)","format":"number2","comment":"Damage on Crit Hit multiplier (default 1): product of (1+source) over the 'Critical' ark-passive node, bracelet crit-hit-damage lines, and class crit-hit-damage synergy (keyed by the DPS's spec). Computed in the DPS snapshot pass (dps:dpsCritHitTotal); see configs/snapshot/expr/critHitParts.ts."},{"cell":"C24","field":"dpsCritRateTotal","character":"dps","sheetTab":"DPS players data (Serca)","format":"percent1","comment":"Crit Rate bonus aggregate (additive, default 0): bracelet + evolution nodes + enlightenment + class synergy + Crit combat stat (/2794) + ring index-74 lines. Computed in the DPS snapshot pass (dps:dpsCritRateTotal); see configs/snapshot/expr/critRateParts.ts."},{"comment":"H3:I11 gem block - the DPS's gemmed skills top-down (dpsGemmedSkills, gem-equip order, ap1/ap2/brand NOT excluded). Each cell shares field dpsGemmedSkills + expr/gemLevel.ts: transformArg = row (0-8), transformContext = 'dmg' (H, damage gem) or 'cdr' (I, cooldown gem). Rows beyond the DPS's gem count stay blank.","cell":"H3","field":"dpsGemmedSkills","character":"dps","sheetTab":"DPS players data (Serca)","transformFile":"expr/gemLevel.ts","transformContext":"dmg","transformArg":0},{"cell":"I3","field":"dpsGemmedSkills","character":"dps","sheetTab":"DPS players data (Serca)","transformFile":"expr/gemLevel.ts","transformContext":"cdr","transformArg":0},{"cell":"H4","field":"dpsGemmedSkills","character":"dps","sheetTab":"DPS players data (Serca)","transformFile":"expr/gemLevel.ts","transformContext":"dmg","transformArg":1},{"cell":"I4","field":"dpsGemmedSkills","character":"dps","sheetTab":"DPS players data (Serca)","transformFile":"expr/gemLevel.ts","transformContext":"cdr","transformArg":1},{"cell":"H5","field":"dpsGemmedSkills","character":"dps","sheetTab":"DPS players data (Serca)","transformFile":"expr/gemLevel.ts","transformContext":"dmg","transformArg":2},{"cell":"I5","field":"dpsGemmedSkills","character":"dps","sheetTab":"DPS players data (Serca)","transformFile":"expr/gemLevel.ts","transformContext":"cdr","transformArg":2},{"cell":"H6","field":"dpsGemmedSkills","character":"dps","sheetTab":"DPS players data (Serca)","transformFile":"expr/gemLevel.ts","transformContext":"dmg","transformArg":3},{"cell":"I6","field":"dpsGemmedSkills","character":"dps","sheetTab":"DPS players data (Serca)","transformFile":"expr/gemLevel.ts","transformContext":"cdr","transformArg":3},{"cell":"H7","field":"dpsGemmedSkills","character":"dps","sheetTab":"DPS players data (Serca)","transformFile":"expr/gemLevel.ts","transformContext":"dmg","transformArg":4},{"cell":"I7","field":"dpsGemmedSkills","character":"dps","sheetTab":"DPS players data (Serca)","transformFile":"expr/gemLevel.ts","transformContext":"cdr","transformArg":4},{"cell":"H8","field":"dpsGemmedSkills","character":"dps","sheetTab":"DPS players data (Serca)","transformFile":"expr/gemLevel.ts","transformContext":"dmg","transformArg":5},{"cell":"I8","field":"dpsGemmedSkills","character":"dps","sheetTab":"DPS players data (Serca)","transformFile":"expr/gemLevel.ts","transformContext":"cdr","transformArg":5},{"cell":"H9","field":"dpsGemmedSkills","character":"dps","sheetTab":"DPS players data (Serca)","transformFile":"expr/gemLevel.ts","transformContext":"dmg","transformArg":6},{"cell":"I9","field":"dpsGemmedSkills","character":"dps","sheetTab":"DPS players data (Serca)","transformFile":"expr/gemLevel.ts","transformContext":"cdr","transformArg":6},{"cell":"H10","field":"dpsGemmedSkills","character":"dps","sheetTab":"DPS players data (Serca)","transformFile":"expr/gemLevel.ts","transformContext":"dmg","transformArg":7},{"cell":"I10","field":"dpsGemmedSkills","character":"dps","sheetTab":"DPS players data (Serca)","transformFile":"expr/gemLevel.ts","transformContext":"cdr","transformArg":7},{"cell":"H11","field":"dpsGemmedSkills","character":"dps","sheetTab":"DPS players data (Serca)","transformFile":"expr/gemLevel.ts","transformContext":"dmg","transformArg":8},{"cell":"I11","field":"dpsGemmedSkills","character":"dps","sheetTab":"DPS players data (Serca)","transformFile":"expr/gemLevel.ts","transformContext":"cdr","transformArg":8}]},
     sheetRef: { "stat_lines": REFS["stat_lines"], "encounters": REFS["encounters"], "cores": REFS["cores"], "core_lines": REFS["core_lines"] },
     cellTransforms: {
-      "F2": E25,
-      "E6": E26,
-      "E7": E26,
-      "E8": E26,
-      "E9": E26,
-      "E10": E26,
-      "E11": E26,
+      "F2": E29,
+      "E6": E30,
+      "E7": E30,
+      "E8": E30,
+      "E9": E30,
+      "E10": E30,
+      "E11": E30,
       "F16": (_c) => { const { value, raw, ref, fields, arg, ctx } = _c; return (String(raw).toLowerCase() === 'bard' ? '15%' : ''); },
       "F19": (_c) => { const { value, raw, ref, fields, arg, ctx } = _c; return (raw === '' || raw == null ? '' : (+raw >= 5 ? '9/7 and better' : 'worse than 9/7')); },
       "F21": (_c) => { const { value, raw, ref, fields, arg, ctx } = _c; return (raw === '' || raw == null ? '' : [0,1,5,9,13,17,21].filter(b => +raw >= b).length - 1); },
-      "L31": E27,
-      "Y15": E28,
-      "Y25": E28,
-      "AF4": E29,
-      "AF13": E29,
-      "AF22": E29,
-      "AU3": E30,
-      "AU4": E30,
-      "AU5": E30,
-      "AU9": E30,
-      "AU10": E30,
-      "AU11": E30,
-      "AW9": E30,
-      "AW10": E30,
-      "AW11": E30,
-      "AU15": E30,
-      "AU16": E30,
-      "AU17": E30,
-      "AW15": E30,
-      "AW16": E30,
-      "AW17": E30,
-      "AU25": E30,
-      "AU26": E30,
-      "AU27": E30,
-      "AU28": E30,
+      "L31": E31,
+      "Y15": E32,
+      "Y25": E32,
+      "AF4": E33,
+      "AF13": E33,
+      "AF22": E33,
+      "AU3": E34,
+      "AU4": E34,
+      "AU5": E34,
+      "AU9": E34,
+      "AU10": E34,
+      "AU11": E34,
+      "AW9": E34,
+      "AW10": E34,
+      "AW11": E34,
+      "AU15": E34,
+      "AU16": E34,
+      "AU17": E34,
+      "AW15": E34,
+      "AW16": E34,
+      "AW17": E34,
+      "AU25": E34,
+      "AU26": E34,
+      "AU27": E34,
+      "AU28": E34,
       "BD3": (_c) => { const { value, raw, ref, fields, arg, ctx } = _c; return (raw === '' || raw == null ? '' : +raw / 1000); },
       "BD4": (_c) => { const { value, raw, ref, fields, arg, ctx } = _c; return (raw === '' || raw == null ? '' : +raw / 1000); },
       "BD5": (_c) => { const { value, raw, ref, fields, arg, ctx } = _c; return (raw === '' || raw == null ? '' : +raw / 1000); },
@@ -59216,24 +59238,24 @@ export const COMPILED_BUNDLES: Record<string, CompiledBundle> = {
       "BC24": (_c) => { const { value, raw, ref, fields, arg, ctx } = _c; return (raw === '' || raw == null ? '' : 'Stone Lv. ' + raw); },
       "BB27": (_c) => { const { value, raw, ref, fields, arg, ctx } = _c; return (raw === '' || raw == null ? '' : (2 * +raw) + '%'); },
       "C11": (_c) => { const { value, raw, ref, fields, arg, ctx } = _c; return (raw === '' || raw == null ? '' : (+raw >= 5 ? '9/7 and better' : 'worse than 9/7')); },
-      "H3": E31,
-      "I3": E31,
-      "H4": E31,
-      "I4": E31,
-      "H5": E31,
-      "I5": E31,
-      "H6": E31,
-      "I6": E31,
-      "H7": E31,
-      "I7": E31,
-      "H8": E31,
-      "I8": E31,
-      "H9": E31,
-      "I9": E31,
-      "H10": E31,
-      "I10": E31,
-      "H11": E31,
-      "I11": E31
+      "H3": E35,
+      "I3": E35,
+      "H4": E35,
+      "I4": E35,
+      "H5": E35,
+      "I5": E35,
+      "H6": E35,
+      "I6": E35,
+      "H7": E35,
+      "I7": E35,
+      "H8": E35,
+      "I8": E35,
+      "H9": E35,
+      "I9": E35,
+      "H10": E35,
+      "I10": E35,
+      "H11": E35,
+      "I11": E35
     },
     sources: [
       {
@@ -59287,7 +59309,7 @@ export const COMPILED_BUNDLES: Record<string, CompiledBundle> = {
         source: "snapshot",
         version: {"supported":"v3"},
         urlTemplate: undefined,
-        ref: { "astrogems": REFS["astrogems"], "cores": REFS["cores"], "ark_passive": REFS["ark_passive"], "gems": REFS["gems"], "skills": REFS["skills"], "armor": REFS["armor"], "gem_skill_groups": REFS["gem_skill_groups"], "add_dmg_bracelet": REFS["add_dmg_bracelet"] },
+        ref: { "astrogems": REFS["astrogems"], "cores": REFS["cores"], "ark_passive": REFS["ark_passive"], "gems": REFS["gems"], "skills": REFS["skills"], "armor": REFS["armor"], "gem_skill_groups": REFS["gem_skill_groups"], "add_dmg_bracelet": REFS["add_dmg_bracelet"], "crit_hit_synergy": REFS["crit_hit_synergy"], "crit_rate_bracelet": REFS["crit_rate_bracelet"], "crit_rate_enlightenment": REFS["crit_rate_enlightenment"], "crit_rate_synergy": REFS["crit_rate_synergy"] },
         rootFn: (data) => (data[1].snapshot),
         rootFallbackFns: [(data) => (data[0].snapshot), (data) => (data[1].data.snapshot), (data) => (data[0].data.snapshot)],
         intermediates: [
@@ -59296,11 +59318,13 @@ export const COMPILED_BUNDLES: Record<string, CompiledBundle> = {
         { id: "arkGrid", scope: null, params: null, fn: E7 },
         { id: "arkPassive", scope: null, params: null, fn: E8 },
         { id: "addDamageParts", scope: null, params: null, fn: E9 },
-        { id: "combatStats", scope: null, params: null, fn: E10 },
-        { id: "stoneEngravings", scope: null, params: null, fn: E11 },
-        { id: "skillGems", scope: null, params: null, fn: E12 },
-        { id: "classSkills", scope: null, params: null, fn: E13 },
-        { id: "otherSkills", scope: null, params: null, fn: E14 }
+        { id: "critRateParts", scope: null, params: null, fn: E10 },
+        { id: "critHitParts", scope: null, params: null, fn: E11 },
+        { id: "combatStats", scope: null, params: null, fn: E12 },
+        { id: "stoneEngravings", scope: null, params: null, fn: E13 },
+        { id: "skillGems", scope: null, params: null, fn: E14 },
+        { id: "classSkills", scope: null, params: null, fn: E15 },
+        { id: "otherSkills", scope: null, params: null, fn: E16 }
         ],
         fields: [
         { id: "class", params: null, fn: (ctx) => { const { data, root, $, players, member, sum, avg, ref, input } = ctx; return (root.classId); } },
@@ -59326,7 +59350,7 @@ export const COMPILED_BUNDLES: Record<string, CompiledBundle> = {
         { id: "swiftStat", params: null, fn: (ctx) => { const { data, root, $, players, member, sum, avg, ref, input } = ctx; return ($.combatStats.swift); } },
         { id: "skinBonus", params: null, fn: (ctx) => { const { data, root, $, players, member, sum, avg, ref, input } = ctx; return (Number(input.skinBonus) / 100); } },
         { id: "strongholdBonus", params: null, fn: (ctx) => { const { data, root, $, players, member, sum, avg, ref, input } = ctx; return (Number(input.stronghold) / 100); } },
-        { id: "stoneBonus", params: null, fn: E15 },
+        { id: "stoneBonus", params: null, fn: E17 },
         { id: "karmaEvolution", params: null, fn: (ctx) => { const { data, root, $, players, member, sum, avg, ref, input } = ctx; return (root.karma.evolution); } },
         { id: "karmaEnlightenment", params: null, fn: (ctx) => { const { data, root, $, players, member, sum, avg, ref, input } = ctx; return (root.karma.enlightenment); } },
         { id: "astroAllyDamage", params: null, fn: (ctx) => { const { data, root, $, players, member, sum, avg, ref, input } = ctx; return ($.arkGrid.side[2011] ?? 0); } },
@@ -59372,25 +59396,25 @@ export const COMPILED_BUNDLES: Record<string, CompiledBundle> = {
         { id: "braceletFlatWp", params: null, fn: (ctx) => { const { data, root, $, players, member, sum, avg, ref, input } = ctx; return (($.itemBySlot.bracelet?.data?.stats||[]).find(s=>s.index===151)?.value ?? ''); } },
         { id: "braceletAllyDmg", params: null, fn: (ctx) => { const { data, root, $, players, member, sum, avg, ref, input } = ctx; return (($.itemBySlot.bracelet?.data?.stats||[]).find(s=>s.index===16000001)?.value ?? ''); } },
         { id: "braceletAllyAtk", params: null, fn: (ctx) => { const { data, root, $, players, member, sum, avg, ref, input } = ctx; return (($.itemBySlot.bracelet?.data?.stats||[]).find(s=>s.index===0)?.value ?? ''); } },
-        { id: "braceletCritDmgTier", params: null, fn: E16 },
-        { id: "magickStreamBooks", params: {"engravingId":1251}, fn: E17 },
-        { id: "awakeningBooks", params: {"engravingId":1255}, fn: E17 },
-        { id: "awakeningRock", params: null, fn: E18 },
-        { id: "leapCdrCommon", params: null, fn: E19 },
+        { id: "braceletCritDmgTier", params: null, fn: E18 },
+        { id: "magickStreamBooks", params: {"engravingId":1251}, fn: E19 },
+        { id: "awakeningBooks", params: {"engravingId":1255}, fn: E19 },
+        { id: "awakeningRock", params: null, fn: E20 },
+        { id: "leapCdrCommon", params: null, fn: E21 },
         { id: "leapCdrArtist", params: null, fn: (ctx) => { const { data, root, $, players, member, sum, avg, ref, input } = ctx; return ((root.arkPassive.leap.find(n=>n.id===2315600)||{level:0}).level); } },
         { id: "ap1Cooldown", params: null, fn: (ctx) => { const { data, root, $, players, member, sum, avg, ref, input } = ctx; return ($.classSkills.ap1?.effectiveCooldown ?? ''); } },
-        { id: "identityDmgGem", params: null, fn: E20 },
-        { id: "tSkillCooldown", params: null, fn: E21 },
-        { id: "ap1SkillDmgGem", params: {"slot":"ap1","kind":"dmg"}, fn: E22 },
-        { id: "ap1SkillCdrGem", params: {"slot":"ap1","kind":"cdr"}, fn: E22 },
+        { id: "identityDmgGem", params: null, fn: E22 },
+        { id: "tSkillCooldown", params: null, fn: E23 },
+        { id: "ap1SkillDmgGem", params: {"slot":"ap1","kind":"dmg"}, fn: E24 },
+        { id: "ap1SkillCdrGem", params: {"slot":"ap1","kind":"cdr"}, fn: E24 },
         { id: "ap2Cooldown", params: null, fn: (ctx) => { const { data, root, $, players, member, sum, avg, ref, input } = ctx; return ($.classSkills.ap2?.effectiveCooldown ?? ''); } },
-        { id: "ap2SkillDmgGem", params: {"slot":"ap2","kind":"dmg"}, fn: E22 },
-        { id: "ap2SkillCdrGem", params: {"slot":"ap2","kind":"cdr"}, fn: E22 },
+        { id: "ap2SkillDmgGem", params: {"slot":"ap2","kind":"dmg"}, fn: E24 },
+        { id: "ap2SkillCdrGem", params: {"slot":"ap2","kind":"cdr"}, fn: E24 },
         { id: "ap1BuffLevel", params: null, fn: (ctx) => { const { data, root, $, players, member, sum, avg, ref, input } = ctx; return ($.classSkills.ap1?.level ?? ''); } },
         { id: "ap2BuffLevel", params: null, fn: (ctx) => { const { data, root, $, players, member, sum, avg, ref, input } = ctx; return ($.classSkills.ap2?.level ?? ''); } },
         { id: "brandCooldown", params: null, fn: (ctx) => { const { data, root, $, players, member, sum, avg, ref, input } = ctx; return ($.classSkills.brand?.effectiveCooldown ?? ''); } },
-        { id: "brandSkillDmgGem", params: {"slot":"brand","kind":"dmg"}, fn: E22 },
-        { id: "brandSkillCdrGem", params: {"slot":"brand","kind":"cdr"}, fn: E22 },
+        { id: "brandSkillDmgGem", params: {"slot":"brand","kind":"dmg"}, fn: E24 },
+        { id: "brandSkillCdrGem", params: {"slot":"brand","kind":"cdr"}, fn: E24 },
         { id: "skill6DmgGem", params: null, fn: (ctx) => { const { data, root, $, players, member, sum, avg, ref, input } = ctx; return ($.otherSkills[0]?.dmg ?? ''); } },
         { id: "skill6CdrGem", params: null, fn: (ctx) => { const { data, root, $, players, member, sum, avg, ref, input } = ctx; return ($.otherSkills[0]?.cdr ?? ''); } },
         { id: "skill6Cooldown", params: null, fn: (ctx) => { const { data, root, $, players, member, sum, avg, ref, input } = ctx; return ($.otherSkills[0]?.cooldown ?? ''); } },
@@ -59406,14 +59430,25 @@ export const COMPILED_BUNDLES: Record<string, CompiledBundle> = {
         { id: "skill10DmgGem", params: null, fn: (ctx) => { const { data, root, $, players, member, sum, avg, ref, input } = ctx; return ($.otherSkills[4]?.dmg ?? ''); } },
         { id: "skill10CdrGem", params: null, fn: (ctx) => { const { data, root, $, players, member, sum, avg, ref, input } = ctx; return ($.otherSkills[4]?.cdr ?? ''); } },
         { id: "skill10Cooldown", params: null, fn: (ctx) => { const { data, root, $, players, member, sum, avg, ref, input } = ctx; return ($.otherSkills[4]?.cooldown ?? ''); } },
-        { id: "dpsGemmedSkills", params: null, fn: E23 },
-        { id: "dpsAddDmgTotal", params: null, fn: E24 },
+        { id: "dpsGemmedSkills", params: null, fn: E25 },
+        { id: "dpsAddDmgTotal", params: null, fn: E26 },
         { id: "dpsAddDmgWeapon", params: null, fn: (ctx) => { const { data, root, $, players, member, sum, avg, ref, input } = ctx; return ($.addDamageParts.weapon); } },
         { id: "dpsAddDmgEvo", params: null, fn: (ctx) => { const { data, root, $, players, member, sum, avg, ref, input } = ctx; return ($.addDamageParts.evo); } },
         { id: "dpsAddDmgSide", params: null, fn: (ctx) => { const { data, root, $, players, member, sum, avg, ref, input } = ctx; return ($.addDamageParts.side); } },
         { id: "dpsAddDmgStable", params: null, fn: (ctx) => { const { data, root, $, players, member, sum, avg, ref, input } = ctx; return ($.addDamageParts.stable); } },
         { id: "dpsAddDmgBracelet", params: null, fn: (ctx) => { const { data, root, $, players, member, sum, avg, ref, input } = ctx; return ($.addDamageParts.bracelet); } },
-        { id: "dpsAddDmgStronghold", params: null, fn: (ctx) => { const { data, root, $, players, member, sum, avg, ref, input } = ctx; return ($.addDamageParts.stronghold); } }
+        { id: "dpsAddDmgStronghold", params: null, fn: (ctx) => { const { data, root, $, players, member, sum, avg, ref, input } = ctx; return ($.addDamageParts.stronghold); } },
+        { id: "dpsCritHitTotal", params: null, fn: E27 },
+        { id: "dpsCritNode", params: null, fn: (ctx) => { const { data, root, $, players, member, sum, avg, ref, input } = ctx; return ($.critHitParts.critNode); } },
+        { id: "dpsCritBracelet", params: null, fn: (ctx) => { const { data, root, $, players, member, sum, avg, ref, input } = ctx; return ($.critHitParts.bracelet); } },
+        { id: "dpsCritSynergy", params: null, fn: (ctx) => { const { data, root, $, players, member, sum, avg, ref, input } = ctx; return ($.critHitParts.synergy); } },
+        { id: "dpsCritRateTotal", params: null, fn: E28 },
+        { id: "dpsCritRateBracelet", params: null, fn: (ctx) => { const { data, root, $, players, member, sum, avg, ref, input } = ctx; return ($.critRateParts.bracelet); } },
+        { id: "dpsCritRateEvo", params: null, fn: (ctx) => { const { data, root, $, players, member, sum, avg, ref, input } = ctx; return ($.critRateParts.evo); } },
+        { id: "dpsCritRateEnlightenment", params: null, fn: (ctx) => { const { data, root, $, players, member, sum, avg, ref, input } = ctx; return ($.critRateParts.enlightenment); } },
+        { id: "dpsCritRateSynergy", params: null, fn: (ctx) => { const { data, root, $, players, member, sum, avg, ref, input } = ctx; return ($.critRateParts.synergy); } },
+        { id: "dpsCritRateCritStat", params: null, fn: (ctx) => { const { data, root, $, players, member, sum, avg, ref, input } = ctx; return ($.critRateParts.critStat); } },
+        { id: "dpsCritRateRing", params: null, fn: (ctx) => { const { data, root, $, players, member, sum, avg, ref, input } = ctx; return ($.critRateParts.ring); } }
         ],
       }
     ],
