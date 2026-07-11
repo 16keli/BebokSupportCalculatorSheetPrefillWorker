@@ -19,6 +19,8 @@ export default transform(({ value, raw, ref }) => {
     3: "Ancient",
   };
   const TYPES: Record<number, string> = { 0: "Sun", 1: "Moon", 2: "Star" };
+  const CORE_NAME_OVERRIDES: Record<string, string> = { "Flowing Magick": "Flowing Magic" };
   const category = e.attr == 0 ? "Order" : "Chaos";
-  return `${category} ${TYPES[e.coreType] ?? e.coreType} Core: ${e.title} (${GRADES[e.grade] ?? e.grade})`;
+  const coreName = CORE_NAME_OVERRIDES[e.title] ?? e.title;
+  return `${category} ${TYPES[e.coreType] ?? e.coreType} Core: ${coreName} (${GRADES[e.grade] ?? e.grade})`;
 });
