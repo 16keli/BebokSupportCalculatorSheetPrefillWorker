@@ -20,7 +20,7 @@ export default transform(({ value, raw, ref }) => {
   };
   const TYPES: Record<number, string> = { 0: "Sun", 1: "Moon", 2: "Star" };
   const CORE_NAME_OVERRIDES: Record<string, string> = {
-    "Flowing Magick": "Flowing Magic"
+    "Flowing Magick": "Flowing Magic",
   };
   const category = e.attr == 0 ? "Order" : "Chaos";
   const coreName = CORE_NAME_OVERRIDES[e.title] ?? e.title;
