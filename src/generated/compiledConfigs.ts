@@ -59342,7 +59342,8 @@ const REFS: Record<string, unknown> = {
   "bracelet:0": {
     "text": "Ally Atk. Power Enhancement Effect +{value}%",
     "scale": 0.01,
-    "comment": "Bracelet ally-attack line (index 0). The bracelet section uses the full wording."
+    "decimals": 1,
+    "comment": "Bracelet ally-attack line (index 0). The bracelet section uses the full wording. decimals:1 so e.g. 4% prints as '4.0%', not trimmed to '4%'."
   },
   "11091": {
     "text": "On hit, target's Crit Damage -4.8% for 8s. Ally Atk. Power Enhancement +3.0%."
