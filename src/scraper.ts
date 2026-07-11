@@ -1,16 +1,15 @@
 // src/scraper.ts
 //
-// Fetches lostark.bible SvelteKit data using Puppeteer: navigates the page so
-// the browser picks up a live session, then fetches __data.json from within
-// the page context (inheriting cookies) to avoid the 403 a plain Worker fetch
-// gets. The raw response is unflattened with devalue in the Worker context.
+// Fetches lostark.bible SvelteKit data with a plain `fetch()` of each page's
+// __data.json, identified by a custom User-Agent (lostark.bible granted this
+// bot direct access per that header - see USER_AGENT below). The raw response
+// is unflattened with devalue in the Worker context.
 //
 // This module is the I/O boundary; the actual field/intermediate evaluation
 // lives in configEngine.ts. The log phase pre-evaluates the log datasource
 // once per party (selecting the party's players and its support member); the
 // snapshot phase evaluates the snapshot datasource for the chosen support.
 
-import puppeteer from "@cloudflare/puppeteer";
 import { unflatten } from "devalue";
 import {
   evaluateSource,
@@ -38,7 +37,7 @@ import type {
   PlayerLogFingerprint,
 } from "./types";
 
-const NAV_TIMEOUT_MS = 30_000;
+const FETCH_TIMEOUT_MS = 30_000;
 
 // Support specs used to pick the focused member within a party. Single source
 // of truth is data/support_specs.json, also bundled into the log config as
@@ -121,124 +120,11 @@ function snapshotWarningFor(p: any): string | undefined {
   return undefined;
 }
 
-// env.MYBROWSER is typed as Fetcher (workers-types), but puppeteer.launch
-// expects BrowserWorker - both are structurally compatible at runtime.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type BrowserBinding = any;
-
 // Identifies this bot to lostark.bible so its operators can see/contact who's
-// scraping (per their request), rather than looking like an anonymous browser.
+// scraping - lostark.bible granted this bot direct fetch access keyed off this
+// header (no browser session/cookies needed), rather than treating it as an
+// anonymous bot and 403ing it.
 const USER_AGENT = "Calculator Fill Bot - @mir_th";
-
-// Runs `fn` with a fresh page. When `sharedBrowser` is provided the page is
-// opened on it (and only the page is closed) so callers can reuse one browser
-// across many fetches - each puppeteer.launch counts against Browser Rendering's
-// new-browser-per-minute limit, so a per-item launch loop 429s after a couple.
-// Without it, a browser is launched and closed for this single call.
-async function withPage<T>(
-  browserBinding: BrowserBinding,
-  fn: (page: import("@cloudflare/puppeteer").Page) => Promise<T>,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  sharedBrowser?: any,
-): Promise<T> {
-  const browser = sharedBrowser ?? (await acquireBrowser(browserBinding));
-  try {
-    const page = await browser.newPage();
-    await page.setUserAgent(USER_AGENT);
-    try {
-      return await fn(page);
-    } finally {
-      await page.close();
-    }
-  } finally {
-    if (!sharedBrowser) await releaseBrowser(browser);
-  }
-}
-
-// How long a browser session lingers after we disconnect, so the next request
-// can reuse it instead of launching a new one. Browser Rendering caps NEW
-// browsers per minute (429 "Unable to create new browser"), and a busy session
-// (one initial log render + validation + phase-2, possibly across two logs)
-// blows through that cap. Keeping sessions warm and reconnecting stays under it.
-const BROWSER_KEEP_ALIVE_MS = 60_000;
-
-// Acquires a browser to drive: reconnects to an existing idle Browser Rendering
-// session when one is free (does NOT count against the new-browser limit), and
-// only launches a fresh one - with keep_alive so it survives for reuse - when
-// none are available. The caller MUST releaseBrowser() when done.
-//
-// Retries on the new-browser 429: a session another pass JUST released takes a
-// moment to become reconnectable, and the per-minute launch budget recovers over
-// time - so when two passes run back-to-back, waiting a couple seconds lets the
-// second reconnect to the first's freed session instead of launching (and 429ing).
-export async function acquireBrowser(
-  browserBinding: BrowserBinding,
-): Promise<unknown> {
-  const MAX_ATTEMPTS = 4;
-  let lastErr: unknown;
-  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-    if (attempt > 0) {
-      await new Promise((r) => setTimeout(r, 1500 * attempt));
-    }
-    try {
-      const sessions = await puppeteer.sessions(browserBinding);
-      // A session with no connectionId has no active puppeteer connection - free
-      // to reconnect to. Try each (another request may grab one first).
-      const free = sessions.filter(
-        (s: { connectionId?: string }) => !s.connectionId,
-      );
-      console.log(
-        `[acquireBrowser] attempt=${attempt + 1}/${MAX_ATTEMPTS} sessions=${sessions.length} free=${free.length}`,
-      );
-      for (const s of free as { sessionId: string }[]) {
-        try {
-          const browser = await puppeteer.connect(browserBinding, s.sessionId);
-          console.log(`[acquireBrowser] reconnected to session ${s.sessionId}`);
-          return browser;
-        } catch (e) {
-          // Taken or closed between listing and connecting - try the next.
-          console.log(
-            `[acquireBrowser] reconnect to ${s.sessionId} failed: ${(e as Error).message}`,
-          );
-        }
-      }
-      const browser = await puppeteer.launch(browserBinding, {
-        keep_alive: BROWSER_KEEP_ALIVE_MS,
-      });
-      console.log(
-        `[acquireBrowser] launched new browser (attempt=${attempt + 1})`,
-      );
-      return browser;
-    } catch (err) {
-      // Retry only the browser-creation rate limit; surface anything else at once.
-      lastErr = err;
-      const message = (err as Error).message;
-      if (!/429|rate limit/i.test(message)) {
-        console.error(`[acquireBrowser] non-retryable failure: ${message}`);
-        throw err;
-      }
-      console.error(
-        `[acquireBrowser] launch 429 on attempt=${attempt + 1}/${MAX_ATTEMPTS}: ${message}`,
-      );
-    }
-  }
-  console.error(
-    `[acquireBrowser] giving up after ${MAX_ATTEMPTS} attempts: ${(lastErr as Error)?.message}`,
-  );
-  throw lastErr;
-}
-
-// Releases a browser acquired via acquireBrowser by DISCONNECTING (not closing),
-// so its session stays warm for BROWSER_KEEP_ALIVE_MS and the next request can
-// reconnect instead of launching. Best-effort - a failure here never propagates.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function releaseBrowser(browser: any): Promise<void> {
-  try {
-    await browser.disconnect();
-  } catch {
-    // Already gone; nothing to release.
-  }
-}
 
 // Reconstructs the SvelteKit page payload from the __data.json envelope.
 // Only { type: "data", data: [...] } nodes are unflattened; null, skip, and
@@ -258,21 +144,16 @@ function unflattenPayload(raw: RawEnvelope): any {
 }
 
 // Fetches and unflattens a lostark.bible page's __data.json, going through the
-// D1 cache (when a binding is provided): a hit skips the Puppeteer browser
-// launch entirely and returns the previously stored payload; a miss launches
-// the browser, fetches, prunes the datasource root to the fields the configs
-// read (stripRoot - most of the cache's space saving), stores that, and returns
-// it. The stored payload still resolves through the same rootPath, so the
-// hit/miss results are identical to downstream evaluation.
+// D1 cache (when a binding is provided): a hit returns the previously stored
+// payload with no network request; a miss fetches directly, prunes the
+// datasource root to the fields the configs read (stripRoot - most of the
+// cache's space saving), stores that, and returns it. The stored payload still
+// resolves through the same rootPath, so the hit/miss results are identical to
+// downstream evaluation.
 async function fetchPayload(
-  browserBinding: BrowserBinding,
   db: D1Database | undefined,
   source: CompiledSource,
   url: string,
-  // Optional caller-owned browser to reuse (avoids a per-call launch). Only used
-  // on a cache miss, so passing it costs nothing when the payload is cached.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  sharedBrowser?: any,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<any> {
   const dataUrl = dataJsonUrl(url);
@@ -280,17 +161,16 @@ async function fetchPayload(
   const cached = await getCachedPayload(db, dataUrl);
   if (cached) return cached;
 
-  const raw = await withPage(
-    browserBinding,
-    async (page) => {
-      const response = await page.goto(dataUrl, {
-        waitUntil: "networkidle0",
-        timeout: NAV_TIMEOUT_MS,
-      });
-      return (await response?.json()) as RawEnvelope | undefined;
-    },
-    sharedBrowser,
-  );
+  const response = await fetch(dataUrl, {
+    headers: { "User-Agent": USER_AGENT },
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+  });
+  if (!response.ok) {
+    throw new Error(
+      `Fetch failed for ${dataUrl}: ${response.status} ${response.statusText}`,
+    );
+  }
+  const raw = (await response.json()) as RawEnvelope | undefined;
 
   if (!raw || !Array.isArray(raw.nodes)) {
     throw new Error(`Unexpected __data.json shape from ${dataUrl}`);
@@ -328,12 +208,11 @@ export interface LogPhaseResult {
 // `version` matches the fetched log's format version is selected (all variants
 // share the root/version path, so any is fine for fetching).
 export async function fetchLogPhase(
-  browserBinding: BrowserBinding,
   url: string,
   logVariants: CompiledSource[],
   db?: D1Database,
 ): Promise<LogPhaseResult> {
-  const payload = await fetchPayload(browserBinding, db, logVariants[0]!, url);
+  const payload = await fetchPayload(db, logVariants[0]!, url);
   const { source: logSource, warning: versionWarning } = selectSourceForPayload(
     logVariants,
     payload,
@@ -463,25 +342,13 @@ export interface SourcePhaseResult {
 // selected. The bible snapshot/loadout carry no version in their payload - their
 // version is the loadoutHash prefix - so the caller passes it as `dataVersion`.
 export async function fetchSourcePhase(
-  browserBinding: BrowserBinding,
   url: string,
   variants: CompiledSource[],
   db?: D1Database,
   inputs?: Record<string, unknown>,
   dataVersion?: string,
-  // Caller-owned browser to reuse across a batch of fetches (e.g. a party's
-  // support snapshot + loadout + DPS snapshot), so each isn't a separate
-  // puppeteer.launch that 429s on the Browser Rendering new-browser limit.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  sharedBrowser?: any,
 ): Promise<SourcePhaseResult> {
-  const payload = await fetchPayload(
-    browserBinding,
-    db,
-    variants[0]!,
-    url,
-    sharedBrowser,
-  );
+  const payload = await fetchPayload(db, variants[0]!, url);
   const { source, warning: versionWarning } = selectSourceForPayload(
     variants,
     payload,
@@ -500,25 +367,13 @@ export async function fetchSourcePhase(
 // combatPower) and needs no advanced `inputs`. Passing `db` warms the same D1
 // cache phase 2 reads, so the later fetchSourcePhase call becomes a cache hit.
 export async function fetchSnapshotRoot(
-  browserBinding: BrowserBinding,
   url: string,
   variants: CompiledSource[],
   db?: D1Database,
   dataVersion?: string,
-  // Caller-owned browser to reuse across a batch of snapshots (validation loop),
-  // so each member isn't a separate puppeteer.launch that 429s on the Browser
-  // Rendering new-browser limit.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  sharedBrowser?: any,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<any> {
-  const payload = await fetchPayload(
-    browserBinding,
-    db,
-    variants[0]!,
-    url,
-    sharedBrowser,
-  );
+  const payload = await fetchPayload(db, variants[0]!, url);
   const { source } = selectSourceForPayload(variants, payload, dataVersion);
   return resolveRoot(payload, source);
 }
@@ -551,24 +406,18 @@ function pickLoadout(loadouts: any[], wantSupport: boolean): any {
 // (unlike an immutable loadoutHash snapshot URL), so caching would risk serving
 // stale gear - exactly what this override exists to avoid.
 export async function fetchCharacterGearPhase(
-  browserBinding: BrowserBinding,
   characterUrl: string,
   snapshotVariants: CompiledSource[],
   loadoutVariants: CompiledSource[],
   inputs?: Record<string, unknown>,
   wantSupport = true,
-  // Caller-owned browser to reuse across a batch of fetches - see fetchSourcePhase.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  sharedBrowser?: any,
 ): Promise<SourcePhaseResult> {
   if (loadoutVariants.length === 0)
     throw new Error("No loadout datasource configured.");
   const payload = await fetchPayload(
-    browserBinding,
     undefined,
     loadoutVariants[0]!,
     characterUrl,
-    sharedBrowser,
   );
   const loadouts = resolveRoot(payload, loadoutVariants[0]!);
   const chosen = pickLoadout(loadouts as unknown[] as any[], wantSupport);

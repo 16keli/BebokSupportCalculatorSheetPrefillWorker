@@ -1,10 +1,9 @@
 // src/scrapeCache.ts
 //
-// D1-backed cache for the lostark.bible payloads that the scraper fetches via
-// Puppeteer. A given loa-logs log or character snapshot is immutable for its
-// URL (the loadoutHash changes when the character changes gear), so the URL is
-// a safe content key and a cache hit lets us skip the expensive browser launch
-// - and the global scrape rate limit - entirely.
+// D1-backed cache for the lostark.bible payloads the scraper fetches. A given
+// loa-logs log or character snapshot is immutable for its URL (the loadoutHash
+// changes when the character changes gear), so the URL is a safe content key
+// and a cache hit lets us skip the network fetch entirely.
 //
 // What we store is the UNFLATTENED payload with its datasource root pruned to
 // just the fields the configs read (see scrapeStrip.ts) - a big space win, as a
