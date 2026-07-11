@@ -112,10 +112,14 @@ async function handleDebugHeaders(request: Request): Promise<Response> {
     r: PromiseSettledResult<Response>,
   ): Promise<unknown> => {
     if (r.status === "rejected") return { error: String(r.reason) };
+    // Read the body once as text, then try to parse it - calling .json() and
+    // falling back to .text() on the same Response fails the second read
+    // since the body stream is already consumed after the first attempt.
+    const text = await r.value.text();
     try {
-      return await r.value.json();
+      return JSON.parse(text);
     } catch {
-      return { status: r.value.status, body: await r.value.text() };
+      return { status: r.value.status, body: text };
     }
   };
 
