@@ -82,6 +82,25 @@ export interface RefTables {
   // DPS loa-logs spec -> class crit-rate synergy fraction
   // (data/crit_rate_synergy.json, hand-curated). See expr/critRateParts.ts.
   crit_rate_synergy?: Record<string, number>;
+  // Bracelet "Crit Damage" special-effect ability id -> crit-damage fraction
+  // (data/crit_dmg_bracelet.json, from raw_data/Ability.json, ids 11021-11024).
+  crit_dmg_bracelet?: Record<string, number>;
+  // Ark-passive crit-damage node id -> per-LEVEL crit-damage fraction array
+  // (data/crit_dmg_arkpassive.json, indexed by allocated level). Evolution and
+  // enlightenment nodes both; some are conditional. See expr/critDmgParts.ts.
+  crit_dmg_arkpassive?: Record<string, number[]>;
+  // Evolution-tree node id -> per-LEVEL Evolution-Type Damage fraction array
+  // (data/evolution_dam_tree.json, from raw_data/ArkPassive.json evolution_dam_rate).
+  // See expr/evoDmgParts.ts (excludes Blunt Thorn / Supersonic / MP Furnace).
+  evolution_dam_tree?: Record<string, number[]>;
+  // Every playerclass id -> display name + internal (snapshot-reported) name
+  // (data/classes.json, from raw_data/PCData.json + Enums.json playerclass).
+  // See expr/classDisplayName.ts and expr/classSkills.ts.
+  classes?: { id: number; name: string; internal_name: string }[];
+  // Bracelet special-effect ability id -> effective flat Weapon Power bonus,
+  // assuming any condition is met and any stacks are maxed (data/flat_wp_bracelet.json).
+  // See expr/braceletFlatWpLines.ts (M15/M17/M18/M19 on the DPS tab).
+  flat_wp_bracelet?: Record<string, number>;
 }
 
 // -- Intermediate result shapes ($.<id>) ------------------------------------
@@ -181,8 +200,30 @@ export interface CritRateParts {
   evo: number;
   enlightenment: number;
   synergy: number;
+  engravings: number;
   critStat: number;
   ring: number;
+}
+
+// Per-source crit-DAMAGE bonus contributions for the DPS player, each a fraction
+// (0.10 = 10%). Added to the 2.0 base by dpsCritDmgTotal into the DPS tab's C23
+// cell. See configs/snapshot/expr/critDmgParts.ts.
+export interface CritDmgParts {
+  bracelet: number;
+  ring: number;
+  keenBlunt: number;
+  arkPassive: number;
+}
+
+// Per-source Evolution-Type Damage for the DPS player. karma/tree/supersonic/
+// mpFurnace are fractions summed by dpsEvolutionDamage into C21; bluntThorn is a
+// boolean written to the C25 checkbox. See configs/snapshot/expr/evoDmgParts.ts.
+export interface EvoDmgParts {
+  karma: number;
+  tree: number;
+  supersonic: number;
+  mpFurnace: number;
+  bluntThorn: boolean;
 }
 
 export interface SnapshotIntermediates {
@@ -193,6 +234,8 @@ export interface SnapshotIntermediates {
   addDamageParts: AddDamageParts;
   critHitParts: CritHitParts;
   critRateParts: CritRateParts;
+  critDmgParts: CritDmgParts;
+  evoDmgParts: EvoDmgParts;
   combatStats: CombatStats;
   stoneEngravings: StoneEngraving[];
   skillGems: SkillGems;

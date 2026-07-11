@@ -213,6 +213,11 @@ const PET_LABEL: Record<string, string> = {
   other: "Other",
 };
 
+const DPS_PET_LABEL: Record<string, string> = {
+  crit: "Crit",
+  other: "Other",
+};
+
 // Live preview mirroring the snapshot combatStats logic. The authoritative
 // values are still computed server-side from the snapshot in phase 2; this only
 // shows the user what to expect.
@@ -332,6 +337,77 @@ function SpecSwiftTable({
   );
 }
 
+// The DPS counterpart of SpecSwiftTable: rows Pet / Roster Bonus, columns Crit /
+// Other. Only Crit is tracked for the DPS (it feeds the Crit-stat term of the
+// crit rate, C24), so "Other" just means "the pet isn't on Crit" and the roster
+// Other cell is intentionally empty. Unlike the support we can't preview the
+// pet default here (the DPS's crit evolution points only arrive with its
+// snapshot in phase 2), so leaving Pet unset lets the worker resolve it.
+function DpsCritTable({
+  pet,
+  rosterCrit,
+  inputs,
+  onChange,
+  onPetChange,
+  locked,
+  idPrefix,
+}: {
+  pet: AdvancedInput;
+  rosterCrit: AdvancedInput;
+  inputs: Record<string, string>;
+  onChange: (id: string, value: string) => void;
+  onPetChange: (value: string) => void;
+  locked: boolean;
+  idPrefix: string;
+}) {
+  const petValue = inputs.dpsPet ?? "";
+  return (
+    <div className="spec-swift-wrap">
+      <div className="spec-swift-table crit-table">
+        <div className="spec-swift-cell spec-swift-header" />
+        <div className="spec-swift-cell spec-swift-header" title="Crit">
+          <img src="/icons/crit.png" alt="Crit" className="spec-swift-icon" />
+        </div>
+        <div className="spec-swift-cell spec-swift-header">Other</div>
+
+        <div
+          className="spec-swift-cell spec-swift-row-label"
+          title={pet.label ?? "Pet"}
+        >
+          Pet
+        </div>
+        {(["crit", "other"] as const).map((value) => (
+          <button
+            key={value}
+            type="button"
+            aria-pressed={petValue === value}
+            disabled={locked}
+            className={`spec-swift-cell spec-swift-option${petValue === value ? " selected" : ""}`}
+            onClick={() => onPetChange(value)}
+          >
+            {DPS_PET_LABEL[value]}
+          </button>
+        ))}
+
+        <div className="spec-swift-cell spec-swift-row-label">Roster</div>
+        <div className="spec-swift-cell">
+          <input
+            id={`${idPrefix}-dpsRosterCrit`}
+            type="number"
+            placeholder={
+              rosterCrit.default != null ? String(rosterCrit.default) : ""
+            }
+            disabled={locked}
+            onChange={(e) => onChange("dpsRosterCrit", e.target.value)}
+          />
+        </div>
+        <div className="spec-swift-cell spec-swift-cell-empty" />
+      </div>
+      {pet.help && <small className="advanced-help">{pet.help}</small>}
+    </div>
+  );
+}
+
 // One side's gear source, laid out as two columns toggled by a radio: the left
 // column selects the in-game snapshot via a character dropdown (disabled/visual
 // for the support, which has a single member); the right column takes a manual
@@ -429,6 +505,9 @@ function GearSourcePicker({
 interface PartyFormState {
   inputs: Record<string, string>;
   petTouched: boolean;
+  // Same idea as petTouched, for the DPS Pet cell: once the user picks a cell we
+  // stop auto-seeding it from the selected DPS member's crit points.
+  dpsPetTouched: boolean;
   // Selected reference-DPS member names; undefined = use the party's default
   // (highest-CP DPS). uptimeMember may also be the AGGREGATE sentinel.
   gearMember?: string;
@@ -498,6 +577,7 @@ export function PrefillCard({ card, onDone }: PrefillCardProps) {
     return {
       inputs: seedInputs(inputsDefs),
       petTouched: false,
+      dpsPetTouched: false,
       done: false,
       status: null,
     };
@@ -731,6 +811,29 @@ export function PrefillCard({ card, onDone }: PrefillCardProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedKey, support, current.petTouched, current.inputs.pet]);
 
+  // Auto-seed the DPS Pet cell from the SELECTED DPS member's Crit evolution
+  // points (crit when 20+, else other) - the DPS mirror of the support rule
+  // above, and the same rule the worker falls back to when dpsPet is unset.
+  // critPoints is 0 when the log carries no ark-passive data, so an unresolvable
+  // member safely lands on "other". Re-runs when the reference DPS changes.
+  useEffect(() => {
+    if (!selectedKey || current.dpsPetTouched) return;
+    const players = playersForKey(selectedKey);
+    const name = current.gearMember ?? highestDamageDpsName(players);
+    const member = players.find((p) => p.name === name);
+    const auto = (member?.critPoints ?? 0) >= 20 ? "crit" : "other";
+    if (current.inputs.dpsPet === auto) return;
+    updateParty(selectedKey, (s) => ({
+      inputs: { ...s.inputs, dpsPet: auto },
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    selectedKey,
+    current.gearMember,
+    current.dpsPetTouched,
+    current.inputs.dpsPet,
+  ]);
+
   // Group inputs by their (optional) section heading, preserving order.
   const sections = useMemo(() => {
     const order: string[] = [];
@@ -836,11 +939,13 @@ export function PrefillCard({ card, onDone }: PrefillCardProps) {
   function renderField(inp: AdvancedInput) {
     const fieldId = `inp-${card.jobId}-${inp.id}`;
     const onChange = (v: string) => setField(inp.id, v);
-    // Skin bonus is derived from the loadout when the support gear comes from a
-    // manual character-link override - the worker fills F18 from the loadout's
-    // avatar skins, so the manual slider is inert. Disable it and say so.
+    // Either side's skin bonus is derived from the loadout when that side's gear
+    // comes from a manual character-link override - the worker fills it from the
+    // loadout's avatar skins (F18 for the support, the skin half of M27 for the
+    // DPS), so the manual slider is inert. Disable it and say so.
     const loadoutComputed =
-      inp.id === "skinBonus" && supportGearMode === "manual";
+      (inp.id === "skinBonus" && supportGearMode === "manual") ||
+      (inp.id === "dpsSkinBonus" && dpsGearMode === "manual");
     const disabled = locked || loadoutComputed;
     return (
       <div className="advanced-field" key={inp.id}>
@@ -913,6 +1018,22 @@ export function PrefillCard({ card, onDone }: PrefillCardProps) {
               updateParty(selectedKey, (s) => ({
                 inputs: { ...s.inputs, pet: v },
                 petTouched: true,
+              }));
+            }}
+            locked={locked}
+            idPrefix={`inp-${card.jobId}`}
+          />
+        ) : section === "DPS Crit" ? (
+          <DpsCritTable
+            pet={defs.find((d) => d.id === "dpsPet")!}
+            rosterCrit={defs.find((d) => d.id === "dpsRosterCrit")!}
+            inputs={current.inputs}
+            onChange={setField}
+            onPetChange={(v) => {
+              if (!selectedKey) return;
+              updateParty(selectedKey, (s) => ({
+                inputs: { ...s.inputs, dpsPet: v },
+                dpsPetTouched: true,
               }));
             }}
             locked={locked}

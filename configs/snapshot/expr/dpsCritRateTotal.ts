@@ -7,5 +7,13 @@ import { snapshotExpr } from "../../_context.ts";
 
 export default snapshotExpr(({ $ }) => {
   const p = $.critRateParts;
-  return p.bracelet + p.evo + p.enlightenment + p.synergy + p.critStat + p.ring;
+  return (
+    p.bracelet +
+    p.evo +
+    p.enlightenment +
+    p.synergy +
+    p.engravings +
+    p.critStat +
+    p.ring
+  );
 });

@@ -240,6 +240,11 @@ export interface PartyMemberInfo {
   // Whether the member's spec is one of SUPPORT_SPECS (see scraper.ts) -
   // selects the dps/support combat-power icon in the party-pick UI.
   isSupport: boolean;
+  // Ark-passive evolution points allocated to Crit (node 1010100), read from the
+  // log's per-member arkPassiveData. Lets the UI auto-seed the DPS Pet cell (crit
+  // when 20+, else other), mirroring the support's spec-points pet rule. 0 when
+  // unresolvable, which safely falls back to "other".
+  critPoints: number;
   // Set when the member's logged engravings suggest their in-game gear snapshot
   // is inaccurate (a support whose engravings don't look like a support build,
   // or a DPS on a "chaos"/mobbing build) - a human-readable reason surfaced as a

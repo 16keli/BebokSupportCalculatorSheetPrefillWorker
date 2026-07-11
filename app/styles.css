@@ -874,6 +874,12 @@ input.invalid {
 }
 
 /* Specialization / Swiftness table (Pet row + Roster Bonus row x Spec/Swift/Other) */
+/* The DPS crit table reuses the spec/swift cell styles but has one fewer stat
+   column (Crit / Other instead of Spec / Swift / Other). */
+.spec-swift-table.crit-table {
+  grid-template-columns: auto repeat(2, 1fr);
+}
+
 .spec-swift-table {
   display: grid;
   grid-template-columns: auto repeat(3, 1fr);

@@ -21,7 +21,12 @@
     "crit_hit_synergy",
     "crit_rate_bracelet",
     "crit_rate_enlightenment",
-    "crit_rate_synergy"
+    "crit_rate_synergy",
+    "crit_dmg_bracelet",
+    "crit_dmg_arkpassive",
+    "evolution_dam_tree",
+    "classes",
+    "flat_wp_bracelet"
   ],
   "intermediates": [
     {
@@ -52,7 +57,17 @@
     {
       "id": "critRateParts",
       "exprFile": "expr/critRateParts.ts",
-      "comment": "DPS-only. Per-source crit-rate contributions (each a fraction) ADDITIVELY summed by dpsCritRateTotal into the DPS tab's C24 cell (default 0): bracelet crit-rate lines (Ability 11011-14 via data/crit_rate_bracelet.json), generic evolution nodes (1020300 Keen Sense 0.04, 1030200 Zealous Smite 0.12, 1030300 Strike 0.10 per level x level), enlightenment nodes (data/crit_rate_enlightenment.json per-level x $.arkPassive.enl level), curated class synergy (data/crit_rate_synergy.json keyed by input.dpsSpec), the raw Crit combat stat (sum of item index-15 lines / 2794), and raw index-74 crit-rate lines (sum of ALL item index-74 lines / 10000 - both rings and bracelets carry these with the same parameters). Reads $.arkPassive/$.itemBySlot + ref/input; support fields never reference it."
+      "comment": "DPS-only. Per-source crit-rate contributions (each a fraction) ADDITIVELY summed by dpsCritRateTotal into the DPS tab's C24 cell (default 0): bracelet crit-rate lines (Ability 11011-14 via data/crit_rate_bracelet.json), generic evolution nodes (1020300 Keen Sense 0.04, 1030200 Zealous Smite 0.12, 1030300 Strike 0.10 per level x level, 1032200 Master 0.07 flat), crit-rate engravings (Adrenaline book 1299: 14% + 1.5% per 5 books; Precise Dagger book 1303: 18% + 0.75% per 5 books, plus ability-stone 303 per-rank [3, 3.75, 5.25, 6]%), enlightenment nodes (data/crit_rate_enlightenment.json per-level x $.arkPassive.enl level), curated class synergy (data/crit_rate_synergy.json keyed by input.dpsSpec), the raw Crit combat stat (sum of item index-15 lines / 2794), and raw index-74 crit-rate lines (sum of ALL item index-74 lines / 10000 - both rings and bracelets carry these with the same parameters). Reads $.arkPassive/$.itemBySlot + ref/input; support fields never reference it."
+    },
+    {
+      "id": "evoDmgParts",
+      "exprFile": "expr/evoDmgParts.ts",
+      "comment": "DPS-only. Per-source Evolution-Type Damage (statType evolution_dam_rate=45). dpsEvolutionDamage sums karma+tree+supersonic+mpFurnace into the DPS tab's C21 cell (additive, default 0): karma = ArkPassiveKarma id 10000 rank (root.karma.evolution via breakpoints [0,1,5,9,13,17,21]) x 1%/rank; tree = sum of every allocated evolution node's machine-readable evolution_dam_rate (data/evolution_dam_tree.json per-level) EXCLUDING the keystones; supersonic (node 1040200) + mpFurnace (node 1040500) = 12% per allocated level (speed/MP-scaling capped at 12%/level). bluntThorn (node 1040100) contributes 0 but is a boolean written to the C25 checkbox. Reads root.karma/$.arkPassive + ref; support fields never reference it."
+    },
+    {
+      "id": "critDmgParts",
+      "exprFile": "expr/critDmgParts.ts",
+      "comment": "DPS-only. Per-source crit-DAMAGE bonus contributions (each a fraction) added to a 2.0 base by dpsCritDmgTotal into the DPS tab's C23 cell: C23 = 2.0 + bracelet + ring + keenBlunt + arkPassive. bracelet = crit-damage lines Ability 11021-24 via data/crit_dmg_bracelet.json (0.10/0.084/0.068/0.052); ring = sum of ALL item raw index-76 (CRITICAL_DAM_RATE) lines / 10000 (rings + bracelets); keenBlunt = Keen Blunt Weapon = engraving part (44% base at legendary + 2% per 5 books, books via engravingBooks logic on root.engravings id 1141) + ability-stone part ([7.5,9.4,13.2,15]% by the stone's Keen Blunt rank, stoneEngravings id 141); arkPassive = curated node id -> per-level array (data/crit_dmg_arkpassive.json: Strike 1030300 directional, enlightenment 2290500/2211100) indexed by evo/enl level. Reads $.arkPassive/$.itemBySlot/$.stoneEngravings + ref; support fields never reference it."
     },
     {
       "id": "critHitParts",
@@ -394,6 +409,11 @@
       "expr": "($.itemBySlot.bracelet?.data?.stats||[]).find(s=>s.index===151)?.value ?? ''"
     },
     {
+      "id": "braceletFlatWpLines",
+      "exprFile": "expr/braceletFlatWpLines.ts",
+      "comment": "DPS tab M15/M17/M18/M19: every bracelet stat line granting flat Weapon Power (index-151 raw value, or a curated special-effect id from data/flat_wp_bracelet.json assuming its condition is met and stacks are maxed), packed contiguously. See expr/braceletFlatWpLines.ts."
+    },
+    {
       "id": "braceletAllyDmg",
       "expr": "($.itemBySlot.bracelet?.data?.stats||[]).find(s=>s.index===16000001)?.value ?? ''"
     },
@@ -665,6 +685,11 @@
       "comment": "Debug/part: class crit-rate synergy (curated data/crit_rate_synergy.json keyed by input.dpsSpec)."
     },
     {
+      "id": "dpsCritRateEngravings",
+      "expr": "$.critRateParts.engravings",
+      "comment": "Debug/part: crit-rate engravings - Adrenaline (book id 1299: 14% base + 1.5% per 5 books) and Precise Dagger (book id 1303: 18% base + 0.75% per 5 books, plus ability-stone id 303 per-rank [3, 3.75, 5.25, 6]%)."
+    },
+    {
       "id": "dpsCritRateCritStat",
       "expr": "$.critRateParts.critStat",
       "comment": "Debug/part: Crit combat stat (sum of item index-15 lines / 2794)."
@@ -673,6 +698,66 @@
       "id": "dpsCritRateRing",
       "expr": "$.critRateParts.ring",
       "comment": "Debug/part: raw index-74 crit-rate lines across all items (rings and bracelets), sum / 10000."
+    },
+    {
+      "id": "dpsCritDmgTotal",
+      "exprFile": "expr/dpsCritDmgTotal.ts",
+      "comment": "DPS tab C23 (character='dps', plain decimal, default 2.0). Absolute crit-damage multiplier = 2.0 base + additive bonus sources from critDmgParts."
+    },
+    {
+      "id": "dpsCritDmgBracelet",
+      "expr": "$.critDmgParts.bracelet",
+      "comment": "Debug/part: bracelet crit-damage lines (Ability ids 11021-11024 via data/crit_dmg_bracelet.json)."
+    },
+    {
+      "id": "dpsCritDmgRing",
+      "expr": "$.critDmgParts.ring",
+      "comment": "Debug/part: raw index-76 crit-damage lines across all items (rings and bracelets), sum / 10000."
+    },
+    {
+      "id": "dpsCritDmgKeenBlunt",
+      "expr": "$.critDmgParts.keenBlunt",
+      "comment": "Debug/part: Keen Blunt Weapon crit damage = engraving (44% base + 2%/5 books) + ability-stone rank bonus ([7.5,9.4,13.2,15]%)."
+    },
+    {
+      "id": "dpsCritDmgArkPassive",
+      "expr": "$.critDmgParts.arkPassive",
+      "comment": "Debug/part: ark-passive crit-damage nodes (data/crit_dmg_arkpassive.json, per-level x evo/enl level)."
+    },
+    {
+      "id": "dpsMainStatBonus",
+      "expr": "(Number(input.dpsSkinBonus) + Number(input.dpsMainStronghold)) / 100",
+      "comment": "DPS tab M27 (character='dps', percent). Main-stat % = skin bonus + stronghold farm bonus summed (advanced inputs dpsSkinBonus + dpsMainStronghold, percentages -> fraction). Mirrors the support's skinBonus (F18) + strongholdBonus (BJ3), which the DPS sheet combines into one cell."
+    },
+    {
+      "id": "dpsEvolutionDamage",
+      "exprFile": "expr/dpsEvolutionDamage.ts",
+      "comment": "DPS tab C21 (character='dps', percent). Additive Evolution-Type Damage bonus (a fraction) = karma + evolution tree + Supersonic Breakthrough + MP Furnace, from evoDmgParts."
+    },
+    {
+      "id": "dpsBluntThornActive",
+      "expr": "$.evoDmgParts.bluntThorn",
+      "comment": "DPS tab C25 (character='dps', checkbox). TRUE when the Blunt Thorn evolution node (1040100) is allocated; its evolution damage is otherwise treated as 0 in C21."
+    },
+    {
+      "id": "dpsEvoDmgKarma",
+      "expr": "$.evoDmgParts.karma",
+      "comment": "Debug/part: karma evolution damage (ArkPassiveKarma id 10000 rank x 1%)."
+    },
+    {
+      "id": "dpsEvoDmgTree",
+      "expr": "$.evoDmgParts.tree",
+      "comment": "Debug/part: sum of allocated evolution-tree nodes' evolution damage (data/evolution_dam_tree.json, excludes Blunt Thorn/Supersonic/MP Furnace)."
+    },
+    {
+      "id": "dpsEvoDmgSupersonic",
+      "expr": "$.evoDmgParts.supersonic",
+      "comment": "Debug/part: Supersonic Breakthrough (node 1040200) = 12% per allocated level."
+    },
+    {
+      "id": "dpsEvoDmgMpFurnace",
+      "expr": "$.evoDmgParts.mpFurnace",
+      "comment": "Debug/part: MP Furnace (node 1040500) = 12% per allocated level."
     }
   ]
 }

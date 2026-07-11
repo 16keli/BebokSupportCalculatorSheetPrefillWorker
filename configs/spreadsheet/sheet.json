@@ -5,7 +5,7 @@
   "sheetTitle": "",
   "sheetTab": "Sup buff calc v3.81",
   "comment": "Maps target cells (A1 notation) to field ids produced by the snapshot/log datasource configs. The field id is the common key joining sheet <-> datasource. A cell may also carry a `transform`/`transformFile` that reshapes the field's raw value into the written value (sheet-side, so datasources stay canonical and other spreadsheets can render the same data differently); transforms read `refData` below as `ref`.",
-  "refData": ["stat_lines", "encounters", "cores", "core_lines"],
+  "refData": ["stat_lines", "encounters", "cores", "core_lines", "classes"],
   "inputs": [
     {
       "id": "rosterSpec",
@@ -84,6 +84,70 @@
       "help": "Main stat % from stronghold farm."
     },
     {
+      "id": "dpsRosterCrit",
+      "label": "Roster-wide Crit",
+      "type": "number",
+      "default": 76,
+      "section": "DPS Crit",
+      "help": "Flat roster Crit for the DPS. With the pet and the tier-1 Crit evolution node, feeds the Crit-stat term of the DPS crit rate (C24)."
+    },
+    {
+      "id": "dpsPet",
+      "label": "Pet stat bonus (+160)",
+      "type": "select",
+      "default": "",
+      "section": "DPS Crit",
+      "options": [
+        {
+          "value": "crit",
+          "label": "Crit"
+        },
+        {
+          "value": "other",
+          "label": "Other (no crit bonus)"
+        }
+      ],
+      "help": "Pet adds +160 to the selected stat. Left unset it defaults to Crit when the DPS's Crit evolution allocation is 20+, otherwise Other."
+    },
+    {
+      "id": "dpsSkinBonus",
+      "label": "Skin bonus",
+      "type": "range",
+      "default": 8,
+      "min": 0,
+      "max": 8,
+      "step": 0.5,
+      "unit": "%",
+      "section": "DPS Main stat (str/dex/int)",
+      "help": "Main stat % from skins."
+    },
+    {
+      "id": "dpsMainStronghold",
+      "label": "Stronghold farm bonus",
+      "type": "select",
+      "default": "1.0",
+      "section": "DPS Main stat (str/dex/int)",
+      "options": [
+        {
+          "value": "0",
+          "label": "0%"
+        },
+        {
+          "value": "0.4",
+          "label": "0.4%"
+        },
+        {
+          "value": "0.7",
+          "label": "0.7%"
+        },
+        {
+          "value": "1.0",
+          "label": "1.0%"
+        }
+      ],
+      "help": "Main stat % from stronghold farm."
+    },
+    {
       "id": "dpsStronghold",
       "label": "DPS stronghold farm bonus",
       "type": "select",
@@ -107,7 +171,7 @@
           "label": "1.0%"
         }
       ],
-      "help": "Stronghold farm additional damage for the DPS (feeds the DPS Additional Damage total, C20)."
+      "help": "Stronghold farm additional damage."
     }
   ],
   "cells": [
@@ -679,7 +743,9 @@
     },
     {
       "cell": "BB28",
-      "field": "leapCdrArtist"
+      "field": "leapCdrArtist",
+      "transform": "raw === '' || raw == null ? '' : (5 * +raw) + '%'",
+      "comment": "Artist 'Dragon Gem' leap node CDR -> '{5 * value}%', e.g. 3 -> '15%' (5%/level)."
     },
     {
       "cell": "BJ11",
@@ -775,6 +841,30 @@
       "comment": "Additional Damage total: additive sum (fraction) of the DPS's sources (weapon quality + Master evolution node + ark-grid side lines + 'Stable Attack' core + bracelet + stronghold). Computed in the DPS snapshot pass (dps:dpsAddDmgTotal); see configs/snapshot/expr/addDamageParts.ts."
     },
     {
+      "cell": "M27",
+      "field": "dpsMainStatBonus",
+      "character": "dps",
+      "sheetTab": "DPS players data (Serca)",
+      "format": "percent1",
+      "comment": "DPS main-stat % = skin bonus + stronghold farm bonus, summed (the support splits these across F18/BJ3; the DPS sheet takes one combined cell). Advanced inputs dpsSkinBonus + dpsMainStronghold."
+    },
+    {
+      "cell": "C21",
+      "field": "dpsEvolutionDamage",
+      "character": "dps",
+      "sheetTab": "DPS players data (Serca)",
+      "format": "percent1",
+      "comment": "Evolution-Type Damage bonus (additive, default 0): karma + evolution-tree nodes + Supersonic Breakthrough + MP Furnace (Blunt Thorn treated as 0, ticks C25). Computed in the DPS snapshot pass (dps:dpsEvolutionDamage); see configs/snapshot/expr/evoDmgParts.ts."
+    },
+    {
+      "cell": "C25",
+      "field": "dpsBluntThornActive",
+      "character": "dps",
+      "sheetTab": "DPS players data (Serca)",
+      "transform": "raw === true ? 'TRUE' : 'FALSE'",
+      "comment": "Blunt Thorn checkbox: TRUE when the Blunt Thorn evolution node (1040100) is allocated (dps:dpsBluntThornActive). USER_ENTERED parses TRUE/FALSE into the checkbox boolean."
+    },
+    {
       "cell": "C22",
       "field": "dpsCritHitTotal",
       "character": "dps",
@@ -783,11 +873,19 @@
       "comment": "Damage on Crit Hit multiplier (default 1): product of (1+source) over the 'Critical' ark-passive node, bracelet crit-hit-damage lines, and class crit-hit-damage synergy (keyed by the DPS's spec). Computed in the DPS snapshot pass (dps:dpsCritHitTotal); see configs/snapshot/expr/critHitParts.ts."
     },
     {
+      "cell": "C23",
+      "field": "dpsCritDmgTotal",
+      "character": "dps",
+      "sheetTab": "DPS players data (Serca)",
+      "format": "percent1",
+      "comment": "Crit Damage multiplier (default 2.0 base): 2.0 + bracelet crit-damage lines + raw index-76 lines + Keen Blunt Weapon engraving + ark-passive crit-damage nodes. Computed in the DPS snapshot pass (dps:dpsCritDmgTotal); see configs/snapshot/expr/critDmgParts.ts."
+    },
+    {
       "cell": "C24",
       "field": "dpsCritRateTotal",
       "character": "dps",
       "sheetTab": "DPS players data (Serca)",
-      "format": "percent1",
+      "format": "percent2",
       "comment": "Crit Rate bonus aggregate (additive, default 0): bracelet + evolution nodes + enlightenment + class synergy + Crit combat stat (/2794) + ring index-74 lines. Computed in the DPS snapshot pass (dps:dpsCritRateTotal); see configs/snapshot/expr/critRateParts.ts."
     },
     {
@@ -952,6 +1050,46 @@
       "transformFile": "expr/gemLevel.ts",
       "transformContext": "cdr",
       "transformArg": 8
+    },
+    {
+      "cell": "M5",
+      "field": "braceletMain",
+      "character": "dps",
+      "sheetTab": "DPS players data (Serca)",
+      "comment": "DPS bracelet main stat (index 11, all main-stat types). Same field as the support's AU24."
+    },
+    {
+      "cell": "M15",
+      "field": "braceletFlatWpLines",
+      "character": "dps",
+      "sheetTab": "DPS players data (Serca)",
+      "transformFile": "expr/pickIndex.ts",
+      "transformArg": 0,
+      "comment": "DPS bracelet flat-Weapon-Power lines (dps:braceletFlatWpLines; see expr/braceletFlatWpLines.ts), packed contiguously across M15/M17/M18/M19 via the generic pickIndex.ts (M16 reserved separately)."
+    },
+    {
+      "cell": "M17",
+      "field": "braceletFlatWpLines",
+      "character": "dps",
+      "sheetTab": "DPS players data (Serca)",
+      "transformFile": "expr/pickIndex.ts",
+      "transformArg": 1
+    },
+    {
+      "cell": "M18",
+      "field": "braceletFlatWpLines",
+      "character": "dps",
+      "sheetTab": "DPS players data (Serca)",
+      "transformFile": "expr/pickIndex.ts",
+      "transformArg": 2
+    },
+    {
+      "cell": "M19",
+      "field": "braceletFlatWpLines",
+      "character": "dps",
+      "sheetTab": "DPS players data (Serca)",
+      "transformFile": "expr/pickIndex.ts",
+      "transformArg": 3
     }
   ]
 }

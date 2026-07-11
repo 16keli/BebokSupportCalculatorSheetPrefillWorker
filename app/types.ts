@@ -23,6 +23,10 @@ export interface PartyMemberInfo {
   // are sorted by this, and the default reference DPS is the highest-damage one.
   damage: number;
   isSupport: boolean;
+  // Ark-passive evolution points allocated to Crit (node 1010100), from the log's
+  // per-member arkPassiveData. Auto-seeds the DPS Pet cell (crit when 20+, else
+  // other); 0 when unresolvable, which falls back to "other".
+  critPoints: number;
   // Human-readable reason the member's in-game gear snapshot may be inaccurate
   // (support engravings that don't match a support build, or a DPS "chaos"
   // build), or undefined when the snapshot looks fine. Drives a gear warning.

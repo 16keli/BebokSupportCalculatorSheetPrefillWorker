@@ -2,8 +2,9 @@
 // The player class's ap1 / ap2 / brand skill (from skills.json by classId+type),
 // each { id, type, level, cooldown (base ms), effectiveCooldown (ms after taken
 // cooldown tripods) } or null. root.classId is the lowercase class NAME, while
-// skills.json keys on the numeric classId, so NAME2ID maps the 4 support classes
-// (a numeric classId passes through). Every support has one ap1 and one ap2.
+// skills.json keys on the numeric classId, so NAME2ID (built from ref.classes,
+// data/classes.json) maps every class's internal AND display name to its id (a
+// numeric classId passes through). Every support has one ap1 and one ap2.
 // A class may DESIGNATE several brand skills (skills.json type "brand"); `brands`
 // lists every one DETECTED in the build (level > 0 in root.skills, most-leveled
 // first) and `brand` designates the primary - the first of `brands`, i.e. highest
@@ -11,7 +12,7 @@
 // no brand skill is slotted, `brands` is empty and `brand` falls back to the
 // class's highest-defined brand so the brand slot still resolves (matching prior
 // behaviour). effectiveCooldown applies each matching cdrTripod delta.
-// Bindings: root, ref.skills.
+// Bindings: root, ref.skills, ref.classes.
 import {
   snapshotExpr,
   type ClassSkill,
@@ -21,18 +22,14 @@ import {
 
 export default snapshotExpr<void, ClassSkills>(({ root, ref }) => {
   // Snapshots carry the class's INTERNAL name, not the display name (verified
-  // against samples): paladin = "holyknight", valkyrie = "holyknight_female",
-  // artist = "yinyangshi"; bard is plain "bard". Display-name aliases are kept
-  // as defensive fallbacks.
-  const NAME2ID: Record<string, number> = {
-    paladin: 105,
-    holyknight: 105,
-    valkyrie: 113,
-    holyknight_female: 113,
-    bard: 204,
-    artist: 602,
-    yinyangshi: 602,
-  };
+  // against samples), e.g. paladin = "holyknight", valkyrie =
+  // "holyknight_female", artist = "yinyangshi"; bard is plain "bard". Display
+  // names are kept as defensive fallbacks alongside the internal names.
+  const NAME2ID: Record<string, number> = {};
+  for (const c of ref.classes ?? []) {
+    NAME2ID[c.internal_name.toLowerCase()] = c.id;
+    NAME2ID[c.name.toLowerCase()] = c.id;
+  }
   const cls = NAME2ID[String(root.classId).toLowerCase()] ?? root.classId;
   const list = (ref.skills || []).filter((s) => s.classId === cls && s.type);
   const playerSkill = (id: number) =>

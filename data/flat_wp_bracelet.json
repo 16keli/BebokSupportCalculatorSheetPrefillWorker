@@ -1,0 +1,12 @@
+{
+  "_comment": "Bracelet special-effect ability id -> effective flat Weapon Power bonus, assuming any condition is satisfied and any stacks are maxed (from raw_data/Ability.json text, cross-checked against data/stat_lines.json). 11111-11113: base + maxed 'HP>50%, on-hit' bonus (9000+2400, 8100+2200, 7200+2000). 11121-11123: base + 30 stacks of the on-hit-every-30s bonus (8700+150*30, 7800+140*30, 6900+130*30). 605100101-605100103: the per-hit Weapon Power grant itself stacks up to 6 times (max 6 stack, 10s duration) -> 1480*6, 1320*6, 1160*6.",
+  "11111": 11400,
+  "11112": 10300,
+  "11113": 9200,
+  "11121": 13200,
+  "11122": 12000,
+  "11123": 10800,
+  "605100101": 8880,
+  "605100102": 7920,
+  "605100103": 6960
+}

@@ -93,6 +93,20 @@ function treeDiffs(
 
 // Returns a warning reason when a player's logged engravings suggest their gear
 // snapshot is inaccurate, or undefined when it looks fine. `engravingData` is a
+// Ark-passive evolution points a player put into Crit (node 1010100), from the
+// log's per-member arkPassiveData - the same source the support's spec/swift
+// points come from (see configs/log/expr/arkPassivePoints.ts). Feeds the UI's
+// DPS Pet auto-seed; 0 when the log carries no ark-passive data for the member,
+// which falls back to "other".
+const CRIT_EVO_NODE = 1010100;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function critPointsOf(p: any): number {
+  const evo = p?.arkPassiveData?.evolution;
+  if (!Array.isArray(evo)) return 0;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return evo.find((n: any) => n?.id === CRIT_EVO_NODE)?.lv ?? 0;
+}
+
 // bare list of engraving names padded with "Unknown" for empty slots (ignored).
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function snapshotWarningFor(p: any): string | undefined {
@@ -329,6 +343,7 @@ export async function fetchLogPhase(
           combatPower: p?.combatPower ?? 0,
           damage: p?.damageStats?.damageDealt ?? 0,
           isSupport: SUPPORT_SPECS.has(p?.spec ?? ""),
+          critPoints: critPointsOf(p),
           snapshotWarning: snapshotWarningFor(p),
         };
       });
@@ -521,6 +536,35 @@ export async function fetchCharacterGearPhase(
   const loadouts = resolveRoot(payload, loadoutVariants[0]!);
   const chosen = pickLoadout(loadouts as unknown[] as any[], wantSupport);
   if (!chosen) throw new Error("No loadouts found for that character.");
+  // The in-game snapshot omits avatar skins, so the skin bonus normally comes
+  // from a manual advanced input. But a character-link override carries the full
+  // loadout (items incl. skins), so we can derive the authoritative skin bonus
+  // from it for EITHER role. Wrap the chosen loadout for the loadout source's
+  // rootPath ("data[2].loadouts") and evaluate skinBonusFromLoadout (a
+  // rarity-weighted fraction, matching the skinBonus field's units).
+  const loadoutWrapped = { data: [null, null, { loadouts: [chosen] }] };
+  const { source: loadoutSource } = selectSourceForPayload(
+    loadoutVariants,
+    loadoutWrapped,
+    "v3",
+  );
+  const skin = evaluateSource(
+    loadoutSource,
+    loadoutWrapped,
+    undefined,
+    inputs,
+  ).skinBonusFromLoadout;
+  const skinOk = !!skin && skin.error == null && skin.value !== "";
+
+  // DPS: M27 (dpsMainStatBonus) sums the dpsSkinBonus + dpsMainStronghold INPUTS,
+  // so feed the loadout-derived skin back in as that input (a percentage, hence
+  // x100) rather than patching the field afterwards - the stronghold half of the
+  // sum keeps working untouched. The UI disables the slider in this mode.
+  const effInputs =
+    !wantSupport && skinOk
+      ? { ...inputs, dpsSkinBonus: Number(skin.raw) * 100 }
+      : inputs;
+
   // Wrap so the snapshot source's rootPath ("data[1].snapshot") resolves to the
   // chosen loadout. data[0] is a placeholder (snapshot pages put it at data[1]).
   const wrapped = { data: [null, { snapshot: chosen }] };
@@ -529,30 +573,10 @@ export async function fetchCharacterGearPhase(
     wrapped,
     "v3",
   );
-  const fields = evaluateSource(source, wrapped, undefined, inputs);
+  const fields = evaluateSource(source, wrapped, undefined, effInputs);
 
-  // The in-game snapshot omits avatar skins, so F18 (skinBonus) normally comes
-  // from the manual advanced input. But a character-link override carries the
-  // full loadout (items incl. skins), so for the support we can derive the
-  // authoritative skin bonus from it - overriding that input. Wrap the chosen
-  // loadout for the loadout source's rootPath ("data[2].loadouts") and evaluate
-  // skinBonusFromLoadout (rarity-weighted fraction, matching skinBonus units).
-  if (wantSupport) {
-    const loadoutWrapped = { data: [null, null, { loadouts: [chosen] }] };
-    const { source: loadoutSource } = selectSourceForPayload(
-      loadoutVariants,
-      loadoutWrapped,
-      "v3",
-    );
-    const skin = evaluateSource(
-      loadoutSource,
-      loadoutWrapped,
-      undefined,
-      inputs,
-    ).skinBonusFromLoadout;
-    if (skin && skin.error == null && skin.value !== "")
-      fields.skinBonus = skin;
-  }
+  // Support: F18 (skinBonus) is its own cell, so override the field directly.
+  if (wantSupport && skinOk) fields.skinBonus = skin;
 
   return {
     fields,

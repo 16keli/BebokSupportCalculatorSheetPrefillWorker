@@ -1,0 +1,202 @@
+[
+  {
+    "id": 0,
+    "name": "Unknown",
+    "internal_name": "unknown"
+  },
+  {
+    "id": 101,
+    "name": "Warrior (Male)",
+    "internal_name": "warrior"
+  },
+  {
+    "id": 102,
+    "name": "Berserker",
+    "internal_name": "berserker"
+  },
+  {
+    "id": 103,
+    "name": "Destroyer",
+    "internal_name": "destroyer"
+  },
+  {
+    "id": 104,
+    "name": "Gunlancer",
+    "internal_name": "warlord"
+  },
+  {
+    "id": 105,
+    "name": "Paladin",
+    "internal_name": "holyknight"
+  },
+  {
+    "id": 111,
+    "name": "Warrior (Female)",
+    "internal_name": "warrior_female"
+  },
+  {
+    "id": 112,
+    "name": "Slayer",
+    "internal_name": "berserker_female"
+  },
+  {
+    "id": 113,
+    "name": "Valkyrie",
+    "internal_name": "holyknight_female"
+  },
+  {
+    "id": 201,
+    "name": "Mage",
+    "internal_name": "magician"
+  },
+  {
+    "id": 202,
+    "name": "Arcanist",
+    "internal_name": "arcana"
+  },
+  {
+    "id": 203,
+    "name": "Summoner",
+    "internal_name": "summoner"
+  },
+  {
+    "id": 204,
+    "name": "Bard",
+    "internal_name": "bard"
+  },
+  {
+    "id": 205,
+    "name": "Sorceress",
+    "internal_name": "elemental_master"
+  },
+  {
+    "id": 301,
+    "name": "Martial Artist (Female)",
+    "internal_name": "fighter"
+  },
+  {
+    "id": 302,
+    "name": "Wardancer",
+    "internal_name": "battle_master"
+  },
+  {
+    "id": 303,
+    "name": "Scrapper",
+    "internal_name": "infighter"
+  },
+  {
+    "id": 304,
+    "name": "Soulfist",
+    "internal_name": "force_master"
+  },
+  {
+    "id": 305,
+    "name": "Glaivier",
+    "internal_name": "lance_master"
+  },
+  {
+    "id": 311,
+    "name": "Martial Artist (Male)",
+    "internal_name": "fighter_male"
+  },
+  {
+    "id": 312,
+    "name": "Striker",
+    "internal_name": "battle_master_male"
+  },
+  {
+    "id": 313,
+    "name": "Breaker",
+    "internal_name": "infighter_male"
+  },
+  {
+    "id": 401,
+    "name": "Assassin",
+    "internal_name": "delain"
+  },
+  {
+    "id": 402,
+    "name": "Deathblade",
+    "internal_name": "blade"
+  },
+  {
+    "id": 403,
+    "name": "Shadowhunter",
+    "internal_name": "demonic"
+  },
+  {
+    "id": 404,
+    "name": "Reaper",
+    "internal_name": "reaper"
+  },
+  {
+    "id": 405,
+    "name": "Souleater",
+    "internal_name": "soul_eater"
+  },
+  {
+    "id": 501,
+    "name": "Gunner (Male)",
+    "internal_name": "hunter"
+  },
+  {
+    "id": 502,
+    "name": "Sharpshooter",
+    "internal_name": "hawk_eye"
+  },
+  {
+    "id": 503,
+    "name": "Deadeye",
+    "internal_name": "devil_hunter"
+  },
+  {
+    "id": 504,
+    "name": "Artillerist",
+    "internal_name": "blaster"
+  },
+  {
+    "id": 505,
+    "name": "Machinist",
+    "internal_name": "scouter"
+  },
+  {
+    "id": 511,
+    "name": "Gunner (Female)",
+    "internal_name": "hunter_female"
+  },
+  {
+    "id": 512,
+    "name": "Gunslinger",
+    "internal_name": "devil_hunter_female"
+  },
+  {
+    "id": 601,
+    "name": "Specialist",
+    "internal_name": "specialist"
+  },
+  {
+    "id": 602,
+    "name": "Artist",
+    "internal_name": "yinyangshi"
+  },
+  {
+    "id": 603,
+    "name": "Aeromancer",
+    "internal_name": "weather_artist"
+  },
+  {
+    "id": 604,
+    "name": "Alchemist",
+    "internal_name": "alchemist"
+  },
+  {
+    "id": 701,
+    "name": "Guardianknight",
+    "internal_name": "guardianknight"
+  },
+  {
+    "id": 702,
+    "name": "Guardianknight",
+    "internal_name": "guardianknight"
+  }
+]
