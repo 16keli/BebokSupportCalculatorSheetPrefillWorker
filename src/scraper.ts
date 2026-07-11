@@ -187,22 +187,44 @@ export async function acquireBrowser(
       const free = sessions.filter(
         (s: { connectionId?: string }) => !s.connectionId,
       );
+      console.log(
+        `[acquireBrowser] attempt=${attempt + 1}/${MAX_ATTEMPTS} sessions=${sessions.length} free=${free.length}`,
+      );
       for (const s of free as { sessionId: string }[]) {
         try {
-          return await puppeteer.connect(browserBinding, s.sessionId);
-        } catch {
+          const browser = await puppeteer.connect(browserBinding, s.sessionId);
+          console.log(`[acquireBrowser] reconnected to session ${s.sessionId}`);
+          return browser;
+        } catch (e) {
           // Taken or closed between listing and connecting - try the next.
+          console.log(
+            `[acquireBrowser] reconnect to ${s.sessionId} failed: ${(e as Error).message}`,
+          );
         }
       }
-      return await puppeteer.launch(browserBinding, {
+      const browser = await puppeteer.launch(browserBinding, {
         keep_alive: BROWSER_KEEP_ALIVE_MS,
       });
+      console.log(
+        `[acquireBrowser] launched new browser (attempt=${attempt + 1})`,
+      );
+      return browser;
     } catch (err) {
       // Retry only the browser-creation rate limit; surface anything else at once.
       lastErr = err;
-      if (!/429|rate limit/i.test((err as Error).message)) throw err;
+      const message = (err as Error).message;
+      if (!/429|rate limit/i.test(message)) {
+        console.error(`[acquireBrowser] non-retryable failure: ${message}`);
+        throw err;
+      }
+      console.error(
+        `[acquireBrowser] launch 429 on attempt=${attempt + 1}/${MAX_ATTEMPTS}: ${message}`,
+      );
     }
   }
+  console.error(
+    `[acquireBrowser] giving up after ${MAX_ATTEMPTS} attempts: ${(lastErr as Error)?.message}`,
+  );
   throw lastErr;
 }
 
@@ -447,8 +469,19 @@ export async function fetchSourcePhase(
   db?: D1Database,
   inputs?: Record<string, unknown>,
   dataVersion?: string,
+  // Caller-owned browser to reuse across a batch of fetches (e.g. a party's
+  // support snapshot + loadout + DPS snapshot), so each isn't a separate
+  // puppeteer.launch that 429s on the Browser Rendering new-browser limit.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  sharedBrowser?: any,
 ): Promise<SourcePhaseResult> {
-  const payload = await fetchPayload(browserBinding, db, variants[0]!, url);
+  const payload = await fetchPayload(
+    browserBinding,
+    db,
+    variants[0]!,
+    url,
+    sharedBrowser,
+  );
   const { source, warning: versionWarning } = selectSourceForPayload(
     variants,
     payload,
@@ -524,6 +557,9 @@ export async function fetchCharacterGearPhase(
   loadoutVariants: CompiledSource[],
   inputs?: Record<string, unknown>,
   wantSupport = true,
+  // Caller-owned browser to reuse across a batch of fetches - see fetchSourcePhase.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  sharedBrowser?: any,
 ): Promise<SourcePhaseResult> {
   if (loadoutVariants.length === 0)
     throw new Error("No loadout datasource configured.");
@@ -532,6 +568,7 @@ export async function fetchCharacterGearPhase(
     undefined,
     loadoutVariants[0]!,
     characterUrl,
+    sharedBrowser,
   );
   const loadouts = resolveRoot(payload, loadoutVariants[0]!);
   const chosen = pickLoadout(loadouts as unknown[] as any[], wantSupport);

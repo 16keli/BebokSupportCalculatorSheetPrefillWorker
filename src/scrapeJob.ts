@@ -188,6 +188,9 @@ export class ScrapeJob extends DurableObject<Env> {
         const autoSelect = parties.length <= 1;
         send({ type: "party-pick", parties, autoSelect, supportInfo, region });
       } catch (err) {
+        console.error(
+          `[logPrefillInitial] fatal: ${(err as Error).message}\n${(err as Error).stack ?? ""}`,
+        );
         send({ type: "error", message: (err as Error).message });
       } finally {
         writer.close();
@@ -312,115 +315,34 @@ export class ScrapeJob extends DurableObject<Env> {
         const snapshotVariants = findSources(bundle, "snapshot");
         const loadoutVariants = findSources(bundle, "loadout");
         let snapshotFields: Record<string, FieldResult> = {};
-        if (snapshotVariants.length > 0) {
-          let usedSupportOverride = false;
-          if (supportGearLink) {
-            // Manual override: pull the support build from the pasted character
-            // link's best-matching loadout instead of the (possibly inaccurate)
-            // in-game snapshot. Non-fatal: on failure fall back to the snapshot.
-            send({
-              type: "status",
-              message: `Fetching support gear from ${supportGearLink}...`,
-            });
-            try {
-              const res = await fetchCharacterGearPhase(
-                this.env.MYBROWSER,
-                supportGearLink,
-                snapshotVariants,
-                loadoutVariants,
-                inputs,
-                true,
-              );
-              snapshotFields = res.fields;
-              usedSupportOverride = true;
-              if (res.versionWarning)
-                send({
-                  type: "status",
-                  message: `Warning: ${res.versionWarning}`,
-                });
-            } catch (e) {
-              send({
-                type: "status",
-                message: `Support gear link failed (${(e as Error).message}); using in-game snapshot.`,
-              });
-            }
-          }
-          if (!usedSupportOverride && !supportHasLoadoutHash) {
-            send({
-              type: "error",
-              message: `Found a support player (${supportEntity.name}) in the selected party, but lostark.bible has no gear data for them in this log and the character-link override failed. Try a different log, or a different character link.`,
-            });
-            return;
-          }
-          if (!usedSupportOverride) {
-            const snapshotUrl = `https://lostark.bible/character/snapshot/${supportEntity.loadoutHash}`;
-            send({
-              type: "status",
-              message: `Fetching snapshot for ${supportEntity.name}...`,
-            });
-            const res = await fetchSourcePhase(
-              this.env.MYBROWSER,
-              snapshotUrl,
-              snapshotVariants,
-              this.env.bebok_scrape_cache,
-              inputs,
-              bibleVersion,
-            );
-            snapshotFields = res.fields;
-            if (res.versionWarning)
-              send({
-                type: "status",
-                message: `Warning: ${res.versionWarning}`,
-              });
-          }
-        }
 
-        // Loadout is a separate page (skins etc.). Best-effort: only when a
-        // config provides a urlTemplate and has fields, and we actually have a
-        // loadoutHash for the support (the override link has no loadout page
-        // equivalent); failure is non-fatal so a bad/unknown loadout URL never
-        // breaks the rest of the prefill.
+        // Reuse ONE browser across every fetch this party needs (support
+        // snapshot, loadout, DPS snapshot, and any gear-override links) instead
+        // of a launch per fetch - each puppeteer.launch counts against Browser
+        // Rendering's new-browser-per-minute limit. Best-effort: if the shared
+        // browser can't be acquired, each fetch below falls back to acquiring
+        // (and releasing) its own, same as before this existed.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        let sharedBrowser: any;
+        try {
+          sharedBrowser = await acquireBrowser(this.env.MYBROWSER);
+        } catch (e) {
+          console.error(
+            `[logPrefillParty] shared browser unavailable: ${(e as Error).message}`,
+          );
+        }
+        let loadoutFields: Record<string, FieldResult> = {};
+        let dpsSnapshotFields: Record<string, FieldResult> = {};
+        // Loadout is a separate page (skins etc.); only when a config provides a
+        // urlTemplate and has fields, and we actually have a loadoutHash for the
+        // support (the override link has no loadout page equivalent).
         const loadoutGate = loadoutVariants.find(
           (s) => s.urlTemplate && s.fields.length > 0,
         );
-        let loadoutFields: Record<string, FieldResult> = {};
-        if (loadoutGate && supportHasLoadoutHash) {
-          const loadoutUrl = loadoutGate.urlTemplate!.replace(
-            "{hash}",
-            supportEntity.loadoutHash,
-          );
-          send({
-            type: "status",
-            message: `Fetching loadout for ${supportEntity.name}...`,
-          });
-          try {
-            const res = await fetchSourcePhase(
-              this.env.MYBROWSER,
-              loadoutUrl,
-              loadoutVariants,
-              this.env.bebok_scrape_cache,
-              undefined,
-              bibleVersion,
-            );
-            loadoutFields = res.fields;
-            if (res.versionWarning)
-              send({
-                type: "status",
-                message: `Warning: ${res.versionWarning}`,
-              });
-          } catch (e) {
-            send({
-              type: "status",
-              message: `Loadout fetch skipped: ${(e as Error).message}`,
-            });
-          }
-        }
-
-        // DPS gear: fill any "dps"-character cells from a selected party
+        // DPS gear: fills any "dps"-character cells from a selected party
         // member's snapshot (default: the highest-combatPower non-support
-        // member). A second snapshot fetch, namespaced as `dps:<field>` so it
-        // sits alongside the support's fields without colliding. Non-fatal: a
-        // missing/invalid gear member just leaves the DPS gear cells blank.
+        // member), namespaced as `dps:<field>` so it sits alongside the
+        // support's fields without colliding.
         const hasDpsCells = bundle.sheet.cells.some(
           (c) => c.character === "dps",
         );
@@ -435,75 +357,93 @@ export class ScrapeJob extends DurableObject<Env> {
           meta.playerEntities.find((e) => e.name === gearMemberName)?.spec ??
           "";
         const dpsInputs = { ...inputs, dpsSpec };
-        let dpsSnapshotFields: Record<string, FieldResult> = {};
-        let usedDpsOverride = false;
-        if (hasDpsCells && snapshotVariants.length > 0 && dpsGearLink) {
-          // Manual override: source the DPS gear cells from the pasted character
-          // link instead of the member's in-game snapshot. Non-fatal: on failure
-          // fall through to the member snapshot below.
-          send({
-            type: "status",
-            message: `Fetching DPS gear from ${dpsGearLink}...`,
-          });
-          try {
-            const res = await fetchCharacterGearPhase(
-              this.env.MYBROWSER,
-              dpsGearLink,
-              snapshotVariants,
-              loadoutVariants,
-              dpsInputs,
-              false,
-            );
-            dpsSnapshotFields = res.fields;
-            usedDpsOverride = true;
-            if (res.versionWarning)
+
+        try {
+          if (snapshotVariants.length > 0) {
+            let usedSupportOverride = false;
+            if (supportGearLink) {
+              // Manual override: pull the support build from the pasted character
+              // link's best-matching loadout instead of the (possibly inaccurate)
+              // in-game snapshot. Non-fatal: on failure fall back to the snapshot.
               send({
                 type: "status",
-                message: `Warning: ${res.versionWarning}`,
+                message: `Fetching support gear from ${supportGearLink}...`,
               });
-          } catch (e) {
-            send({
-              type: "status",
-              message: `DPS gear link failed (${(e as Error).message}); using in-game snapshot.`,
-            });
+              try {
+                const res = await fetchCharacterGearPhase(
+                  this.env.MYBROWSER,
+                  supportGearLink,
+                  snapshotVariants,
+                  loadoutVariants,
+                  inputs,
+                  true,
+                  sharedBrowser,
+                );
+                snapshotFields = res.fields;
+                usedSupportOverride = true;
+                if (res.versionWarning)
+                  send({
+                    type: "status",
+                    message: `Warning: ${res.versionWarning}`,
+                  });
+              } catch (e) {
+                send({
+                  type: "status",
+                  message: `Support gear link failed (${(e as Error).message}); using in-game snapshot.`,
+                });
+              }
+            }
+            if (!usedSupportOverride && !supportHasLoadoutHash) {
+              send({
+                type: "error",
+                message: `Found a support player (${supportEntity.name}) in the selected party, but lostark.bible has no gear data for them in this log and the character-link override failed. Try a different log, or a different character link.`,
+              });
+              return;
+            }
+            if (!usedSupportOverride) {
+              const snapshotUrl = `https://lostark.bible/character/snapshot/${supportEntity.loadoutHash}`;
+              send({
+                type: "status",
+                message: `Fetching snapshot for ${supportEntity.name}...`,
+              });
+              const res = await fetchSourcePhase(
+                this.env.MYBROWSER,
+                snapshotUrl,
+                snapshotVariants,
+                this.env.bebok_scrape_cache,
+                inputs,
+                bibleVersion,
+                sharedBrowser,
+              );
+              snapshotFields = res.fields;
+              if (res.versionWarning)
+                send({
+                  type: "status",
+                  message: `Warning: ${res.versionWarning}`,
+                });
+            }
           }
-        }
-        if (
-          !usedDpsOverride &&
-          hasDpsCells &&
-          snapshotVariants.length > 0 &&
-          gearMemberName
-        ) {
-          const gearEntity = meta.playerEntities.find(
-            (e) => e.name === gearMemberName,
-          );
-          if (
-            !gearEntity ||
-            !LOADOUT_HASH_PATTERN.test(gearEntity.loadoutHash)
-          ) {
+
+          if (loadoutGate && supportHasLoadoutHash) {
+            const loadoutUrl = loadoutGate.urlTemplate!.replace(
+              "{hash}",
+              supportEntity.loadoutHash,
+            );
             send({
               type: "status",
-              message: `DPS gear skipped: no character data for ${gearMemberName}.`,
-            });
-          } else if (gearEntity.loadoutHash === supportEntity.loadoutHash) {
-            // The chosen gear member is the support - reuse the fetch above.
-            dpsSnapshotFields = snapshotFields;
-          } else {
-            const dpsUrl = `https://lostark.bible/character/snapshot/${gearEntity.loadoutHash}`;
-            send({
-              type: "status",
-              message: `Fetching DPS gear snapshot for ${gearEntity.name}...`,
+              message: `Fetching loadout for ${supportEntity.name}...`,
             });
             try {
               const res = await fetchSourcePhase(
                 this.env.MYBROWSER,
-                dpsUrl,
-                snapshotVariants,
+                loadoutUrl,
+                loadoutVariants,
                 this.env.bebok_scrape_cache,
-                dpsInputs,
-                versionFromLoadoutHash(gearEntity.loadoutHash),
+                undefined,
+                bibleVersion,
+                sharedBrowser,
               );
-              dpsSnapshotFields = res.fields;
+              loadoutFields = res.fields;
               if (res.versionWarning)
                 send({
                   type: "status",
@@ -512,10 +452,96 @@ export class ScrapeJob extends DurableObject<Env> {
             } catch (e) {
               send({
                 type: "status",
-                message: `DPS gear fetch skipped: ${(e as Error).message}`,
+                message: `Loadout fetch skipped: ${(e as Error).message}`,
               });
             }
           }
+
+          let usedDpsOverride = false;
+          if (hasDpsCells && snapshotVariants.length > 0 && dpsGearLink) {
+            // Manual override: source the DPS gear cells from the pasted character
+            // link instead of the member's in-game snapshot. Non-fatal: on failure
+            // fall through to the member snapshot below.
+            send({
+              type: "status",
+              message: `Fetching DPS gear from ${dpsGearLink}...`,
+            });
+            try {
+              const res = await fetchCharacterGearPhase(
+                this.env.MYBROWSER,
+                dpsGearLink,
+                snapshotVariants,
+                loadoutVariants,
+                dpsInputs,
+                false,
+                sharedBrowser,
+              );
+              dpsSnapshotFields = res.fields;
+              usedDpsOverride = true;
+              if (res.versionWarning)
+                send({
+                  type: "status",
+                  message: `Warning: ${res.versionWarning}`,
+                });
+            } catch (e) {
+              send({
+                type: "status",
+                message: `DPS gear link failed (${(e as Error).message}); using in-game snapshot.`,
+              });
+            }
+          }
+          if (
+            !usedDpsOverride &&
+            hasDpsCells &&
+            snapshotVariants.length > 0 &&
+            gearMemberName
+          ) {
+            const gearEntity = meta.playerEntities.find(
+              (e) => e.name === gearMemberName,
+            );
+            if (
+              !gearEntity ||
+              !LOADOUT_HASH_PATTERN.test(gearEntity.loadoutHash)
+            ) {
+              send({
+                type: "status",
+                message: `DPS gear skipped: no character data for ${gearMemberName}.`,
+              });
+            } else if (gearEntity.loadoutHash === supportEntity.loadoutHash) {
+              // The chosen gear member is the support - reuse the fetch above.
+              dpsSnapshotFields = snapshotFields;
+            } else {
+              const dpsUrl = `https://lostark.bible/character/snapshot/${gearEntity.loadoutHash}`;
+              send({
+                type: "status",
+                message: `Fetching DPS gear snapshot for ${gearEntity.name}...`,
+              });
+              try {
+                const res = await fetchSourcePhase(
+                  this.env.MYBROWSER,
+                  dpsUrl,
+                  snapshotVariants,
+                  this.env.bebok_scrape_cache,
+                  dpsInputs,
+                  versionFromLoadoutHash(gearEntity.loadoutHash),
+                  sharedBrowser,
+                );
+                dpsSnapshotFields = res.fields;
+                if (res.versionWarning)
+                  send({
+                    type: "status",
+                    message: `Warning: ${res.versionWarning}`,
+                  });
+              } catch (e) {
+                send({
+                  type: "status",
+                  message: `DPS gear fetch skipped: ${(e as Error).message}`,
+                });
+              }
+            }
+          }
+        } finally {
+          if (sharedBrowser) await releaseBrowser(sharedBrowser);
         }
 
         // Uptime cells: per-party results were pre-evaluated in phase 1. Pick
@@ -560,6 +586,9 @@ export class ScrapeJob extends DurableObject<Env> {
           spreadsheetUrl: meta.sheetUrl,
         });
       } catch (err) {
+        console.error(
+          `[logPrefillParty] fatal: ${(err as Error).message}\n${(err as Error).stack ?? ""}`,
+        );
         send({ type: "error", message: (err as Error).message });
       } finally {
         writer.close();
