@@ -65,76 +65,9 @@ export default {
       return handleRateLimitStream(request, env);
     }
 
-    // TEMPORARY DEBUG ROUTE - remove after diagnosing outbound fetch headers.
-    if (url.pathname === "/api/debug-echo-headers") {
-      return handleDebugEchoHeaders(request);
-    }
-    if (url.pathname === "/api/debug-headers") {
-      return handleDebugHeaders(request);
-    }
-
     return new Response("Not found", { status: 404 });
   },
 } satisfies ExportedHandler<Env>;
-
-// TEMPORARY DEBUG HANDLERS - remove both once we've confirmed what headers
-// this Worker's fetch() sends to a remote origin (specifically whether
-// Cloudflare injects a `cf-worker` header on "orange-to-orange" requests -
-// i.e. this Worker calling another Cloudflare-proxied zone, which lostark.bible
-// is - since that header would let their bot rules single out Workers traffic
-// distinctly from a plain curl/browser request).
-//
-// /api/debug-echo-headers: echoes back every header THIS Worker's zone saw on
-// the incoming request, as JSON.
-// /api/debug-headers: calls that echo endpoint (self, same zone - an
-// orange-to-orange hop) AND an external non-Cloudflare host (httpbin.org) with
-// the same headers scraper.ts sends, and returns both results side by side.
-async function handleDebugEchoHeaders(request: Request): Promise<Response> {
-  const headers: Record<string, string> = {};
-  for (const [k, v] of request.headers) headers[k] = v;
-  return new Response(JSON.stringify({ headers }, null, 2), {
-    headers: { "Content-Type": "application/json" },
-  });
-}
-
-async function handleDebugHeaders(request: Request): Promise<Response> {
-  const DEBUG_USER_AGENT = "Calculator Fill Bot - @mir_th";
-  const selfEchoUrl = new URL("/api/debug-echo-headers", request.url).href;
-
-  const [selfRes, externalRes] = await Promise.allSettled([
-    fetch(selfEchoUrl, { headers: { "User-Agent": DEBUG_USER_AGENT } }),
-    fetch("https://httpbin.org/headers", {
-      headers: { "User-Agent": DEBUG_USER_AGENT },
-    }),
-  ]);
-
-  const describe = async (
-    r: PromiseSettledResult<Response>,
-  ): Promise<unknown> => {
-    if (r.status === "rejected") return { error: String(r.reason) };
-    // Read the body once as text, then try to parse it - calling .json() and
-    // falling back to .text() on the same Response fails the second read
-    // since the body stream is already consumed after the first attempt.
-    const text = await r.value.text();
-    try {
-      return JSON.parse(text);
-    } catch {
-      return { status: r.value.status, body: text };
-    }
-  };
-
-  return new Response(
-    JSON.stringify(
-      {
-        selfEcho: await describe(selfRes),
-        httpbin: await describe(externalRes),
-      },
-      null,
-      2,
-    ),
-    { headers: { "Content-Type": "application/json" } },
-  );
-}
 
 async function handleRateLimitStream(
   request: Request,

@@ -11,6 +11,7 @@
     "build": "npm run format:check && npm run compile-configs && tsc -b && vite build",
     "preview": "npm run build && vite preview",
     "deploy": "npm run build && wrangler deploy",
+    "preview:remote": "npm run build && wrangler versions upload",
     "typecheck": "npm run compile-configs && tsc -b --noEmit",
     "test:engine": "npm run compile-configs && node scripts/testEngine.ts",
     "test:version": "node scripts/testVersion.ts",
