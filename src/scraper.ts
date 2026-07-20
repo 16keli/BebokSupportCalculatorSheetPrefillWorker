@@ -379,17 +379,25 @@ export async function fetchSnapshotRoot(
 }
 
 // Picks the best loadout from a character page's `loadouts` array for the target
-// role. Prefers loadouts whose battlePoint.isSupport matches `wantSupport`
-// (falling back to all when none match), then the highest combat power
-// (combatPower.score), with the most recently updated as a tiebreak.
+// role: every loadout whose battlePoint.isSupport matches `wantSupport`, highest
+// combat power (combatPower.score) first, most recently updated as a tiebreak.
+// Returns undefined (the caller throws) when NO loadout matches the role - do
+// NOT fall back to a wrong-role loadout here. A character's `loadouts` list is
+// "most recent per content type" (e.g. one chaos-dungeon entry, one raid entry),
+// each carrying its OWN arkGridCores; a support player who most recently played
+// non-support content (or whose loadouts are all isSupport:false for any other
+// reason) has no support-tagged entry at all, and picking the highest-CP
+// leftover used to silently hand back a DPS build's gear/ark-grid - the caller
+// needs to know that happened (and fall back to the in-game snapshot) rather
+// than write DPS ark-grid cores onto a support character.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function pickLoadout(loadouts: any[], wantSupport: boolean): any {
   if (!Array.isArray(loadouts) || loadouts.length === 0) return undefined;
   const roleMatch = loadouts.filter(
     (l) => !!l?.battlePoint?.isSupport === wantSupport,
   );
-  const candidates = roleMatch.length > 0 ? roleMatch : loadouts;
-  return candidates.reduce((best, l) => {
+  if (roleMatch.length === 0) return undefined;
+  return roleMatch.reduce((best, l) => {
     const lCp = l?.combatPower?.score ?? 0;
     const bestCp = best?.combatPower?.score ?? 0;
     if (lCp !== bestCp) return lCp > bestCp ? l : best;
@@ -421,7 +429,12 @@ export async function fetchCharacterGearPhase(
   );
   const loadouts = resolveRoot(payload, loadoutVariants[0]!);
   const chosen = pickLoadout(loadouts as unknown[] as any[], wantSupport);
-  if (!chosen) throw new Error("No loadouts found for that character.");
+  if (!chosen)
+    throw new Error(
+      Array.isArray(loadouts) && loadouts.length > 0
+        ? `That character has no ${wantSupport ? "support" : "DPS"} loadout on record (only ${wantSupport ? "DPS" : "support"}).`
+        : "No loadouts found for that character.",
+    );
   // The in-game snapshot omits avatar skins, so the skin bonus normally comes
   // from a manual advanced input. But a character-link override carries the full
   // loadout (items incl. skins), so we can derive the authoritative skin bonus

@@ -59531,7 +59531,7 @@ export const COMPILED_BUNDLES: Record<string, CompiledBundle> = {
       },
       {
         source: "log",
-        version: {"path":"encounterDamageStats.misc.version","supported":"<=1.47.1"},
+        version: {"path":"encounterDamageStats.misc.version","supported":"<=1.48.3"},
         urlTemplate: undefined,
         ref: { "skills": REFS["skills"], "support_specs": REFS["support_specs"] },
         rootFn: (data) => (data[0].encounterInfo.encounter),

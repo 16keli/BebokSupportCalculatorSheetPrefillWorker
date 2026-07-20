@@ -44,6 +44,51 @@
   },
   "observability": {
     "enabled": true
+  },
+  // Staging: a fully separate deployed Worker (`wrangler deploy --env staging`,
+  // ends up named "bebok-support-calculator-sheet-prefill-staging") for testing
+  // against real Cloudflare egress/lostark.bible access without touching
+  // production - Durable Object bindings and migrations are NOT inherited from
+  // the top level by named environments, so they're redeclared here in full;
+  // this also means staging's ScrapeJob/RateLimiter instances (and D1 cache)
+  // are entirely separate from production's, with no shared state or quota.
+  // Needs its own secrets before first use:
+  //   wrangler secret put GOOGLE_CLIENT_ID --env staging
+  //   wrangler secret put GOOGLE_CLIENT_SECRET --env staging
+  //   wrangler secret put GOOGLE_REFRESH_TOKEN --env staging
+  //   wrangler secret put RATE_LIMIT_BYPASS_SECRET --env staging  (optional)
+  "env": {
+    "staging": {
+      "durable_objects": {
+        "bindings": [
+          {
+            "name": "SCRAPE_JOB",
+            "class_name": "ScrapeJob"
+          },
+          {
+            "name": "RATE_LIMITER",
+            "class_name": "RateLimiter"
+          }
+        ]
+      },
+      "d1_databases": [
+        {
+          "binding": "bebok_scrape_cache",
+          "database_name": "bebok-scrape-cache-staging",
+          "database_id": "1341413e-1c63-4b55-8d7f-da73dca67ea6"
+        }
+      ],
+      "migrations": [
+        {
+          "tag": "v1",
+          "new_sqlite_classes": ["ScrapeJob"]
+        },
+        {
+          "tag": "v2",
+          "new_sqlite_classes": ["RateLimiter"]
+        }
+      ]
+    }
   }
   // Secrets (set these with `wrangler secret put <NAME>`, do NOT put them here):
   //   GOOGLE_CLIENT_ID
