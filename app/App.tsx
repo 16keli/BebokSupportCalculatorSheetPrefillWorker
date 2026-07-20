@@ -249,12 +249,12 @@ export default function App() {
           <summary>?</summary>
           <div className="easter-egg-gifs">
             <img
-              src="https://media.discordapp.net/attachments/1386086529499140146/1420307483980726344/angry-at-drunk-bebkok.gif?ex=6a533eec&is=6a51ed6c&hm=08ef13f784a1b3e3a841a3607cee5e9d1e22b0dfba99adebaad988b9e59941cf&=&width=450&height=800"
-              alt=""
+              src="/gif/angry-at-drunk-bebkok.gif"
+              alt="I don't wanna check your damn calculator"
             />
             <img
-              src="https://media.discordapp.net/attachments/1317646229617905705/1469345842870616206/cat-cant-read.gif?ex=6a530234&is=6a51b0b4&hm=13df6bda847a67b04878d27840eef187b6f4d825e3ad48026df4b1e785eaab03&=&width=403&height=623"
-              alt=""
+              src="/gif/cat-cant-read.gif"
+              alt="I know you said check pins but what if I can't read??"
             />
           </div>
         </details>
