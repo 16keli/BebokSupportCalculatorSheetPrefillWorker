@@ -138,6 +138,7 @@ export default function App() {
                 supportInfo: evt.supportInfo,
                 region: evt.region,
                 inputsDefs: bundle.sheet.inputs ?? [],
+                hasDpsMeterUptime: Boolean(bundle.sheet.dpsMeterUptime),
               },
             ]);
           } else if (evt.type === "prefill-done") {

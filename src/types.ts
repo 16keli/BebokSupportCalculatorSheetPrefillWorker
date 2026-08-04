@@ -187,6 +187,20 @@ export interface AdvancedInput {
   help?: string;
 }
 
+// Version-specific cell layout for the "preserve DPS meter uptimes" toggle
+// (LogPrefillPartyPayload.preserveUptime). When the toggle is OFF (default),
+// the worker overwrites the just-written support uptime cells (targetRange)
+// with whatever's already sitting in sourceRange (the sheet's own DPS-meter-fed
+// column next to it) and unchecks checkboxCell, restoring the sheet's prior
+// behavior of trusting a manually-entered/DPS-meter uptime over the log's
+// computed one. When ON, this step is skipped entirely. Cell layout varies by
+// sheet version, so this lives alongside the rest of the per-version SheetConfig.
+export interface DpsMeterUptimeConfig {
+  sourceRange: string;
+  targetRange: string;
+  checkboxCell: string;
+}
+
 export interface SheetConfig {
   key: string;
   version: string;
@@ -202,6 +216,9 @@ export interface SheetConfig {
   // build time, mirroring a datasource's own refData.
   refData?: string[];
   cells: CellBinding[];
+  // See DpsMeterUptimeConfig. Omitted for a sheet version that doesn't support
+  // the toggle (the worker then ignores preserveUptime entirely).
+  dpsMeterUptime?: DpsMeterUptimeConfig;
 }
 
 export interface ConfigBundle {
@@ -289,6 +306,11 @@ export interface LogPrefillPartyPayload {
   // Same, but overrides the selected DPS member's gear (the "dps"-character
   // cells) instead of the support build.
   dpsGearLink?: string;
+  // "Preserve DPS meter uptimes" advanced-settings toggle. false/undefined
+  // (default, unchecked) restores the sheet's DPS-meter-fed uptime column over
+  // the log-computed one just written - see DpsMeterUptimeConfig. true skips
+  // that step, leaving the log-computed uptimes in place.
+  preserveUptime?: boolean;
 }
 
 // Phase 1.5: validate the selected party's members' snapshots against the log

@@ -264,7 +264,10 @@ export interface ResolveResult {
 // write targets the correct tab. Already-qualified refs (containing "!") are
 // passed through unchanged. Single quotes are required when the name contains
 // spaces, dots, or other special characters; internal single quotes are doubled.
-function qualifyCell(cell: string, sheetTab: string | undefined): string {
+export function qualifyCell(
+  cell: string,
+  sheetTab: string | undefined,
+): string {
   if (!sheetTab || cell.includes("!")) return cell;
   const needsQuotes = /[^A-Za-z0-9_]/.test(sheetTab);
   const tabName = needsQuotes ? `'${sheetTab.replace(/'/g, "''")}'` : sheetTab;

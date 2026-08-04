@@ -264,6 +264,57 @@ async function applyCellFormats(
   }
 }
 
+// Reads a rectangular range as raw (unformatted) values, e.g. an uptime
+// fraction comes back as 0.96 rather than the display string "96.00%" - so it
+// can be re-written elsewhere and keep its own cell's number format.
+export async function getRangeValues(
+  env: GoogleAuthEnv,
+  spreadsheetId: string,
+  range: string,
+): Promise<unknown[][]> {
+  const token = await getAccessToken(env);
+  const res = await fetch(
+    `${SHEETS_API}/${spreadsheetId}/values/${encodeURIComponent(
+      range,
+    )}?valueRenderOption=UNFORMATTED_VALUE`,
+    { headers: { Authorization: `Bearer ${token}` } },
+  );
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Failed to read range ${range} (${res.status}): ${text}`);
+  }
+  const data = (await res.json()) as { values?: unknown[][] };
+  return data.values ?? [];
+}
+
+// Writes a rectangular block of values to a range in one call (unlike
+// setCellValues, which addresses one cell per override).
+export async function setRangeValues(
+  env: GoogleAuthEnv,
+  spreadsheetId: string,
+  range: string,
+  values: unknown[][],
+): Promise<void> {
+  const token = await getAccessToken(env);
+  const res = await fetch(
+    `${SHEETS_API}/${spreadsheetId}/values/${encodeURIComponent(
+      range,
+    )}?valueInputOption=USER_ENTERED`,
+    {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ values }),
+    },
+  );
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Failed to write range ${range} (${res.status}): ${text}`);
+  }
+}
+
 export async function getSheetTitles(
   env: GoogleAuthEnv,
   spreadsheetId: string,

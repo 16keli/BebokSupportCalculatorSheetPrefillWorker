@@ -105,6 +105,14 @@ export interface AdvancedInput {
   help?: string;
 }
 
+// Mirrors src/types.ts's DpsMeterUptimeConfig: presence gates whether the
+// "Preserve DPS meter uptimes" toggle is shown for this sheet version.
+export interface DpsMeterUptimeConfig {
+  sourceRange: string;
+  targetRange: string;
+  checkboxCell: string;
+}
+
 export interface SheetConfig {
   key: string;
   version: string;
@@ -112,6 +120,7 @@ export interface SheetConfig {
   sheetTitle?: string;
   inputs?: AdvancedInput[];
   cells: CellBinding[];
+  dpsMeterUptime?: DpsMeterUptimeConfig;
 }
 
 export interface ConfigBundle {
@@ -166,6 +175,9 @@ export interface PrefillCardState {
   // The bundle's advanced-input definitions, captured so the card can render
   // them and send the collected values with the party request.
   inputsDefs?: AdvancedInput[];
+  // Whether this bundle's sheet version supports the "Preserve DPS meter
+  // uptimes" toggle (SheetConfig.dpsMeterUptime present) - gates rendering it.
+  hasDpsMeterUptime?: boolean;
 }
 
 // Pushed over the /api/rate-limit-stream WebSocket whenever quota changes.

@@ -521,6 +521,10 @@ interface PartyFormState {
   // source (used only when the corresponding mode is "manual"). Empty = not set.
   supportGearLink?: string;
   dpsGearLink?: string;
+  // "Preserve DPS meter uptimes" advanced-settings toggle. undefined/false
+  // (default, unchecked) restores the sheet's DPS-meter-fed uptime column over
+  // the log-computed one after the write; true leaves the log-computed values.
+  preserveUptime?: boolean;
   // Phase 1.5 snapshot<->log cross-check, streamed per member once this party is
   // selected. `validationAttempts` counts passes (0 = never run): it both guards
   // the one-shot auto-fetch on selection and caps auto-retries after a browser
@@ -643,6 +647,7 @@ export function PrefillCard({ card, onDone }: PrefillCardProps) {
           uptimeMember,
           supportGearLink,
           dpsGearLink,
+          preserveUptime: st.preserveUptime ?? false,
         },
         (evt) => {
           if (evt.type === "status") {
@@ -1186,6 +1191,28 @@ export function PrefillCard({ card, onDone }: PrefillCardProps) {
           )}
           <details className="advanced-collapse">
             <summary>Advanced inputs</summary>
+            {card.hasDpsMeterUptime && (
+              <label className="advanced-field advanced-checkbox">
+                <input
+                  type="checkbox"
+                  checked={current.preserveUptime ?? false}
+                  disabled={locked}
+                  onChange={(e) =>
+                    selectedKey &&
+                    updateParty(selectedKey, {
+                      preserveUptime: e.target.checked,
+                    })
+                  }
+                />
+                Preserve DPS meter uptimes
+                <span
+                  className="tooltip-icon"
+                  title="DPS meter uptimes are dependent on your gear, so they make apples-to-apples comparisons difficult. Values are inputted to the calculator as DPS meter uptimes, but then converted to true uptimes automatically. We do not recommend using them, but if you're stubborn you can."
+                >
+                  ⓘ
+                </span>
+              </label>
+            )}
             <div className="advanced-columns">
               <div className="advanced-column">
                 <div className="advanced-column-head">Support</div>

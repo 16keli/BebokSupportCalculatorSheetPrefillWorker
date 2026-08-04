@@ -762,6 +762,23 @@ select {
 .advanced-field:last-child {
   margin-bottom: 0;
 }
+.advanced-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+.advanced-checkbox input {
+  width: auto;
+}
+.tooltip-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-dim);
+  cursor: help;
+  font-size: 13px;
+}
 .advanced-help {
   display: block;
   font-family: var(--mono);

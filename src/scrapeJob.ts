@@ -20,11 +20,21 @@ import {
   compareSnapshotToLog,
   SUPPORT_SPECS,
 } from "./scraper";
-import { findSources, resolveCells, resolveInputs } from "./configEngine";
+import {
+  findSources,
+  resolveCells,
+  resolveInputs,
+  qualifyCell,
+} from "./configEngine";
 import { dataJsonUrl, hasCachedPayload } from "./scrapeCache";
 import { versionFromLoadoutHash } from "./version";
 import { COMPILED_BUNDLES } from "./generated/compiledConfigs";
-import { getOrCopyTemplateSheet, setCellValues } from "./googleSheets";
+import {
+  getOrCopyTemplateSheet,
+  setCellValues,
+  getRangeValues,
+  setRangeValues,
+} from "./googleSheets";
 import type { Env } from "./env";
 import type {
   FieldResult,
@@ -208,7 +218,13 @@ export class ScrapeJob extends DurableObject<Env> {
   private async logPrefillParty(
     payload: LogPrefillPartyPayload,
   ): Promise<Response> {
-    const { partyKey, inputs: rawInputs, gearMember, uptimeMember } = payload;
+    const {
+      partyKey,
+      inputs: rawInputs,
+      gearMember,
+      uptimeMember,
+      preserveUptime,
+    } = payload;
     // Optional gear-override character links (validated before any fetch).
     const supportGearLink =
       payload.supportGearLink &&
@@ -538,6 +554,34 @@ export class ScrapeJob extends DurableObject<Env> {
         if (writes.length > 0) {
           await setCellValues(this.env, meta.spreadsheetId, writes);
         }
+
+        // "Preserve DPS meter uptimes" advanced-settings toggle (default OFF):
+        // unless the user asked to keep the log-computed uptimes just written
+        // above, restore the sheet's own DPS-meter-fed column over them and
+        // uncheck the flag cell that marks the calculated uptimes as active.
+        const dpsMeterUptime = bundle.sheet.dpsMeterUptime;
+        if (!preserveUptime && dpsMeterUptime) {
+          const { sourceRange, targetRange, checkboxCell } = dpsMeterUptime;
+          const { sheetTab } = bundle.sheet;
+          const source = await getRangeValues(
+            this.env,
+            meta.spreadsheetId,
+            qualifyCell(sourceRange, sheetTab),
+          );
+          await setRangeValues(
+            this.env,
+            meta.spreadsheetId,
+            qualifyCell(targetRange, sheetTab),
+            source,
+          );
+          await setRangeValues(
+            this.env,
+            meta.spreadsheetId,
+            qualifyCell(checkboxCell, sheetTab),
+            [["FALSE"]],
+          );
+        }
+
         // Only surface skipped cells that failed due to an error (not just empty values, which
         // are normal for optional fields the character doesn't have).
         const errored = skipped.filter(
