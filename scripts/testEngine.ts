@@ -423,6 +423,23 @@ try {
     `  -- default (no crit-rate sources, unknown spec) --\n  dpsCritRateTotal      = ${cTot} ${cTot === 0 ? "OK (default 0)" : "MISMATCH (expected 0)"}`,
   );
 
+  // Enlightenment per-level ARRAY (non-linear): Dimensionalist Minute Hand
+  // Enhancement 220500300 [0.10, 0.15, 0.20] @level 2 -> 0.15, plus the linear
+  // Acceleration Enhancement 220500500 (0.10/level) @level 3 -> 0.30.
+  const enlCase = JSON.parse(read("planning/samples/snapshotPayload.json"));
+  (resolveRoot(enlCase, snapSource) as any).arkPassive = {
+    evolution: [],
+    enlightenment: [
+      { id: 220500300, level: 2 },
+      { id: 220500500, level: 3 },
+    ],
+  };
+  const enlArr = evaluateSource(snapSource, enlCase, undefined, {})
+    .dpsCritRateEnlightenment.raw as number;
+  console.log(
+    `  -- enlightenment per-level array (Dimensionalist) --\n  dpsCritRate.enl       = ${enlArr} ${Math.abs(enlArr - 0.45) < 1e-9 ? "OK (0.15 + 0.30)" : "MISMATCH (expected 0.45)"}`,
+  );
+
   // Crit STAT term: gear index-15 lines + tier-1 Crit evolution node (1010100,
   // +50/point) + roster Crit input + pet (+160 when on Crit). The pet defaults to
   // Crit iff the crit allocation is >= 20, else Other.

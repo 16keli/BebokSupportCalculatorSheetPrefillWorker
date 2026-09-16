@@ -77,8 +77,9 @@ export interface RefTables {
   // (data/crit_rate_bracelet.json, from raw_data/Ability.json, ids 11011-11014).
   crit_rate_bracelet?: Record<string, number>;
   // Enlightenment crit-rate node id -> PER-LEVEL crit-rate fraction
-  // (data/crit_rate_enlightenment.json, hand-curated, x allocated level).
-  crit_rate_enlightenment?: Record<string, number>;
+  // (data/crit_rate_enlightenment.json, hand-curated, x allocated level), or a
+  // per-level array indexed by allocated level for non-linear nodes.
+  crit_rate_enlightenment?: Record<string, number | number[]>;
   // DPS loa-logs spec -> class crit-rate synergy fraction
   // (data/crit_rate_synergy.json, hand-curated). See expr/critRateParts.ts.
   crit_rate_synergy?: Record<string, number>;

@@ -89,12 +89,19 @@ export default snapshotExpr<void, CritRateParts>(({ root, ref, input, $ }) => {
   for (const [id, perLevel] of Object.entries(EVO_NODES))
     evo += perLevel * ($.arkPassive.evo[Number(id)] ?? 0);
 
-  // Enlightenment tree: curated node id -> per-level fraction, x allocated level.
+  // Enlightenment tree: curated node id -> per-level fraction (x allocated level),
+  // or a per-level array (indexed by allocated level) for non-linear nodes.
   let enlightenment = 0;
   for (const [id, perLevel] of Object.entries(
     ref.crit_rate_enlightenment ?? {},
-  ))
-    enlightenment += perLevel * ($.arkPassive.enl[Number(id)] ?? 0);
+  )) {
+    const level = $.arkPassive.enl[Number(id)] ?? 0;
+    enlightenment += Array.isArray(perLevel)
+      ? level > 0
+        ? (perLevel[level - 1] ?? 0)
+        : 0
+      : perLevel * level;
+  }
 
   // Class crit-rate synergy: curated table keyed by the DPS's loa-logs spec.
   const synergy = ref.crit_rate_synergy?.[String(input.dpsSpec)] ?? 0;

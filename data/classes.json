@@ -190,6 +190,16 @@
     "internal_name": "alchemist"
   },
   {
+    "id": 611,
+    "name": "Specialist (Male)",
+    "internal_name": "specialist_male"
+  },
+  {
+    "id": 612,
+    "name": "Dimensionalist",
+    "internal_name": "dimension_master"
+  },
+  {
     "id": 701,
     "name": "Guardianknight",
     "internal_name": "guardianknight"

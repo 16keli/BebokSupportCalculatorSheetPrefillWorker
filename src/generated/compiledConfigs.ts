@@ -38950,6 +38950,16 @@ const REFS: Record<string, unknown> = {
     "internal_name": "alchemist"
   },
   {
+    "id": 611,
+    "name": "Specialist (Male)",
+    "internal_name": "specialist_male"
+  },
+  {
+    "id": 612,
+    "name": "Dimensionalist",
+    "internal_name": "dimension_master"
+  },
+  {
     "id": 701,
     "name": "Guardianknight",
     "internal_name": "guardianknight"
@@ -51281,7 +51291,9 @@ const REFS: Record<string, unknown> = {
   "11014": 0.026
 },
   "crit_rate_enlightenment": {
-  "2170020": 0.05
+  "2170020": 0.05,
+  "220500300": [0.1, 0.15, 0.2],
+  "220500500": 0.1
 },
   "crit_rate_synergy": {
   "Judgment": 0.1
@@ -51543,7 +51555,9 @@ const REFS: Record<string, unknown> = {
   "170009": [49280, 49290],
   "170010": [49300, 49360, 49370],
   "170012": [49310, 49350],
-  "1100000": [16130, 16140, 16145, 16146, 16147]
+  "1100000": [16130, 16140, 16145, 16146, 16147],
+  "33000": [24030, 24031, 24032],
+  "64000": [2050930, 2050932]
 },
   "gems": {
   "65001010": {
@@ -59531,7 +59545,7 @@ export const COMPILED_BUNDLES: Record<string, CompiledBundle> = {
       },
       {
         source: "log",
-        version: {"path":"encounterDamageStats.misc.version","supported":"<=1.48.4"},
+        version: {"path":"encounterDamageStats.misc.version","supported":"<=1.50.0"},
         urlTemplate: undefined,
         ref: { "skills": REFS["skills"], "support_specs": REFS["support_specs"] },
         rootFn: (data) => (data[0].encounterInfo.encounter),
