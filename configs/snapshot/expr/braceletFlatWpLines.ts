@@ -1,6 +1,8 @@
 // braceletFlatWpLines intermediate - snapshot datasource.
 // Every bracelet stat line that grants flat Weapon Power, resolved to its
-// effective amount for the DPS tab's M15/M17/M18/M19 (packed, up to 4):
+// effective amount for the DPS tab's flat-WP slots (packed; the cells are set
+// per sheet version - 3.8.1: M15/M17/M18/M19, 3.9.2: M15/M18/M19 since M17 became
+// the vambrace's WP):
 //   - index 151 (the generic "Weapon Power +{value}" line) -> raw value, same
 //     as the braceletFlatWp field.
 //   - a curated special-effect ability id (ref.flat_wp_bracelet, e.g.

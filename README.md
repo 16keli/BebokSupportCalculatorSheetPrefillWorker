@@ -3,16 +3,17 @@
 A Cloudflare Worker + React SPA that scrapes a Lost Ark support character's
 data from lostark.bible (loa-logs encounters and character snapshots) and
 prefills a copy of the **Bebok Support Calculator** Google Sheet (primarily the
-`Sup buff calc v3.81` tab, plus a reference DPS build on the
-`DPS players data (Serca)` tab).
+`Sup buff calc v<version>` tab, plus a reference DPS build on the
+`DPS players data (Serca)` tab). Several calculator versions are supported side
+by side (currently 3.9.2 - the default - and 3.8.1); the user picks one in the UI.
 
 You paste a loa-logs log URL and pick which party's support to fill for.
 Optionally you also pick a reference **DPS player** - independently for gear and
 for uptime (both default to the highest-combat-power non-support member) - so
 the sheet's DPS build and buff-uptime cells reflect a chosen party member.
 The Worker copies the template sheet and writes the resolved cell values into
-it. What goes where is entirely data-driven by the config bundle under
-`configs/<version>/` - no cell mapping is hardcoded in the Worker.
+it. What goes where is entirely data-driven by the config bundles under
+`configs/` - no cell mapping is hardcoded in the Worker.
 
 This is a single deployable unit: Vite builds the React/TypeScript frontend
 into static assets, and Wrangler serves them alongside the TypeScript Worker
@@ -56,12 +57,14 @@ src/                Worker backend (TypeScript)
   generated/
     compiledConfigs.ts    Build-time output of scripts/compileConfigs.mjs
 
-configs/<version>/   Config bundle: one sheet.json (cell -> field mappings,
-                       with optional presentation transforms) plus a file per
-                       datasource (snapshot.json / log.json / loadout.json)
-                       and expr/ for longer expressions. Fields are joined
-                       across datasources by id. This is the authoring source
-                       of truth; it is compiled, not evaluated at runtime.
+configs/             Config bundles, one per calculator version, joined by
+                       `key`: spreadsheet/sheet-<version>.json (cell -> field
+                       mappings, with optional presentation transforms) plus
+                       the datasources snapshot/ log/ loadout/ (shared by
+                       every version via an array `key`), each with expr/ for
+                       longer expressions. Fields are joined across
+                       datasources by id. This is the authoring source of
+                       truth; it is compiled, not evaluated at runtime.
 data/                JSON reference tables bundled into configs via refData
                        (skills, gems, cores, ark_passive, encounters, ...)
 scripts/
@@ -99,7 +102,7 @@ than a shared workspace package. If this grows, that's the first refactor.
 ## How it works (two-phase)
 
 **Phase 1 - log scrape + party selection**
-1. In the React UI: pick a config version, a template Sheet, and paste a
+1. In the React UI: pick a calculator version (newest by default) and paste a
    loa-logs log URL.
 2. The Worker fetches the log's `__data.json` from lostark.bible (via
    Puppeteer, so it inherits a real browser session and avoids the plain-fetch
@@ -121,7 +124,7 @@ than a shared workspace package. If this grows, that's the first refactor.
    `character: "dps"` cells; for uptime it selects that member's `byMember`
    result (or the party `aggregate`). It then applies the sheet's cell mappings
    (and any per-cell presentation transforms), copies the template Sheet, and
-   writes the resolved values into the `Sup buff calc v3.81` and
+   writes the resolved values into the version's `Sup buff calc v<version>` and
    `DPS players data (Serca)` tabs.
 
 Because each job's state lives in one Durable Object instance, concurrent
@@ -230,16 +233,22 @@ with `not_found_handling: "single-page-application"`.
 
 ## Editing configs
 
-A prefill config is a directory under `configs/<version>/`:
+A prefill config bundle is every config JSON under `configs/` sharing a `key`:
 
-- **`sheet.json`** - the cell mappings: each entry binds a sheet `cell` to a
+- **`spreadsheet/sheet-<version>.json`** - one per calculator version (its own
+  `key`, `version`, `templateSheet` and `sheetTab`). The cell mappings: each entry binds a sheet `cell` to a
   `field` id, with an optional `transform` for presentation (e.g. ms -> seconds,
   uppercasing) that keeps the datasource value canonical. A cell may also set
   `character: "dps"` to read the field from the selected DPS's snapshot (looked
   up as `dps:<field>`) instead of the support's, and a per-cell `sheetTab` to
   write to a tab other than the bundle default (used for the
-  `DPS players data (Serca)` tab).
-- **`snapshot.json` / `log.json` / `loadout.json`** - datasources. Each lists
+  `DPS players data (Serca)` tab). A cell may set `emptyValue` - written instead
+  of skipping the cell when it resolves empty (or the field wasn't produced /
+  errored); 3.9.2's template ships with sample data, so its input cells reset to
+  blank defaults this way.
+- **`snapshot/snapshot.json` / `log/log.json` / `loadout/loadout.json`** -
+  datasources, shared across sheet versions by listing every version's key
+  (`"key": ["bebok-3.8.1", "bebok-3.9.2"]`). Each lists
   `fields` (joined to the sheet by id) and reusable `intermediates`. Log
   intermediates take a `scope` (`party` default, or `member` to rebind
   `players` to just the focused support).
@@ -249,6 +258,12 @@ Expression context: `data, root, $, players, member, sum, avg, ref, input`
 (`$` = intermediates, `input` = advanced inputs). After any edit, run
 `npm run compile-configs` (and bump `STRIP_VERSION` if you read a new raw
 field - see above).
+
+**Adding a calculator version:** copy the newest `sheet-<version>.json`, set the
+new `key` / `version` / `templateSheet` / `sheetTab`, remap any cells the new
+template moved (diff the two templates' xlsx exports), add `emptyValue` where the
+new template carries sample data, and add the new key to each datasource's `key`
+array. The UI lists versions newest-first and defaults to the newest.
 
 ## Global rate limiting
 
@@ -302,6 +317,6 @@ ceiling is the thing to watch.
   so a live browser session is inherited; a plain Worker fetch gets a 403.
 - **Job state expires after 1 hour of inactivity** - each job's Durable Object
   sets a self-cleanup alarm that pushes out on every request.
-- **Writes target the `Sup buff calc v3.81` tab** of the copied template (plus
+- **Writes target the `Sup buff calc v<version>` tab** of the copied template (plus
   the `DPS players data (Serca)` tab for the reference DPS build).
 - Free Cloudflare accounts have monthly Browser Run minute limits.

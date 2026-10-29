@@ -5,7 +5,7 @@
 // (src/generated/compiledConfigs.ts), so it exercises codegen + engine exactly
 // as production does - just without the network/Puppeteer.
 //
-// Run: node scripts/compileConfigs.mjs && node scripts/testEngine.ts
+// Run: node scripts/compileConfigs.mjs && node scripts/testEngine.ts [bundleKey]
 
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -25,7 +25,10 @@ const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, "..");
 const read = (p: string) => readFileSync(join(root, p), "utf8");
 
-const bundle = COMPILED_BUNDLES["bebok-3.8.1"];
+// Bundle key from argv (e.g. `node scripts/testEngine.ts bebok-3.8.1`).
+const bundleKey = process.argv[2] ?? "bebok-3.9.2";
+const bundle = COMPILED_BUNDLES[bundleKey];
+if (!bundle) throw new Error(`Unknown bundle '${bundleKey}'`);
 const logSource = findSource(bundle, "log")!;
 const snapSource = findSource(bundle, "snapshot")!;
 const loadoutSource = findSource(bundle, "loadout")!;

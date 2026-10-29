@@ -7,9 +7,10 @@
 // -- Config model -------------------------------------------------------
 // A prefill is driven by a ConfigBundle: one SheetConfig plus one
 // DataSourceConfig per datasource (snapshot, log, loadout). All four share a
-// common `key` so they can be authored as separate files and re-associated.
+// common `key` so they can be authored as separate files and re-associated
+// (each sheet version has its own key; datasources list every version's key).
 //
-//   sheet.json     cells:   cell A1 -> field id            (where to write)
+//   sheet-<ver>.json  cells:   cell A1 -> field id         (where to write)
 //   snapshot.json  fields:  field id -> expr over snapshot  (what to compute)
 //   log.json       fields:  field id -> expr over log       (what to compute)
 //
@@ -102,7 +103,10 @@ export interface DataSourceVersion {
 }
 
 export interface DataSourceConfig {
-  key: string;
+  // The bundle key(s) this datasource belongs to. An array shares one datasource
+  // across several sheet versions (e.g. bebok-3.8.1 and bebok-3.9.2 read the
+  // same snapshot/log/loadout fields, mapped to different cells).
+  key: string | string[];
   source: DataSourceKind;
   // Version support declaration (see DataSourceVersion). Optional; absent means
   // the config is version-agnostic (always used, never version-checked).
@@ -157,6 +161,11 @@ export interface CellBinding {
   // section - e.g. an ally-attack line worded one way in the ring section and
   // another in the bracelet section (see data/stat_lines.json context keys).
   transformContext?: string;
+  // Optional value written when this cell would otherwise be skipped (resolved
+  // value empty, field not produced, or field errored). A template that ships
+  // with sample data (e.g. bebok-3.9.2) would otherwise keep the sample value in
+  // any cell the character has nothing for; this resets it to a blank default.
+  emptyValue?: string | number;
   comment?: string;
 }
 

@@ -305,21 +305,28 @@ export function resolveCells(
     // snapshot, merged into fieldValues under a `dps:` namespace by phase 2.
     const lookupId =
       binding.character === "dps" ? `dps:${binding.field}` : binding.field;
+    // A cell that would be skipped writes its `emptyValue` instead, when it has
+    // one, so template sample data can't survive in a cell we have nothing for.
+    // The skip is still recorded (with a suffix) so it stays visible in logs.
+    const skip = (reason: string) => {
+      if (binding.emptyValue !== undefined) {
+        writes.push({
+          cell: qualifyCell(binding.cell, binding.sheetTab ?? sheetTab),
+          value: stringifyVal(binding.emptyValue),
+          format: resolveFormat(binding.format),
+        });
+        reason += " (wrote emptyValue)";
+      }
+      skipped.push({ cell: binding.cell, field: binding.field, reason });
+    };
+
     const r = fieldValues[lookupId];
     if (!r) {
-      skipped.push({
-        cell: binding.cell,
-        field: binding.field,
-        reason: "field not produced",
-      });
+      skip("field not produced");
       continue;
     }
     if (r.error) {
-      skipped.push({
-        cell: binding.cell,
-        field: binding.field,
-        reason: `error: ${r.error}`,
-      });
+      skip(`error: ${r.error}`);
       continue;
     }
 
@@ -339,21 +346,13 @@ export function resolveCells(
         };
         value = stringifyVal(transform(tctx, binding.transformParams));
       } catch (e) {
-        skipped.push({
-          cell: binding.cell,
-          field: binding.field,
-          reason: `transform error: ${(e as Error).message}`,
-        });
+        skip(`transform error: ${(e as Error).message}`);
         continue;
       }
     }
 
     if (value === undefined || value === "") {
-      skipped.push({
-        cell: binding.cell,
-        field: binding.field,
-        reason: "empty",
-      });
+      skip("empty");
       continue;
     }
     writes.push({

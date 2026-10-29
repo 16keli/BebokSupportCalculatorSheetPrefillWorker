@@ -59,7 +59,9 @@ export interface FieldDef {
 }
 
 export interface DataSourceConfig {
-  key: string;
+  // One bundle key, or several when the datasource is shared across sheet
+  // versions. Mirrors src/types.ts's DataSourceConfig.
+  key: string | string[];
   source: DataSourceKind;
   rootPath: string;
   rootPathFallbacks?: string[];
@@ -84,6 +86,7 @@ export interface CellBinding {
   // Optional per-cell sheet tab override (defaults to the sheet's sheetTab).
   sheetTab?: string;
   format?: CellFormat;
+  emptyValue?: string | number;
   comment?: string;
 }
 

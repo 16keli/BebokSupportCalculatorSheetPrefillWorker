@@ -1,5 +1,5 @@
 {
-  "key": "bebok-3.8.1",
+  "key": ["bebok-3.8.1", "bebok-3.9.2"],
   "source": "snapshot",
   "version": { "supported": "v3" },
   "comment": "Bible snapshot v3. Version has no payload field - it's the loadoutHash prefix ('v3/<hash>'), supplied by the runtime. root = the character snapshot object. Fields are referenced from sheet.json by id. Intermediates factor out repeated item/core lookups.",
@@ -26,7 +26,8 @@
     "crit_dmg_arkpassive",
     "evolution_dam_tree",
     "classes",
-    "flat_wp_bracelet"
+    "flat_wp_bracelet",
+    "vambrace"
   ],
   "intermediates": [
     {
@@ -143,6 +144,11 @@
     {
       "id": "weaponAdvHoning",
       "expr": "$.itemBySlot.weapon?.data?.advancedHoning ?? ''"
+    },
+    {
+      "id": "vambrace",
+      "exprFile": "expr/vambrace.ts",
+      "comment": "Equipped vambrace (slot 'bracer') as {level, grade} or null. Sheet 3.9.2+ renders it into the level dropdown (main F12 / DPS C10 via expr/vambraceLabel.ts) and ticks the checkbox (G12 / D10). See expr/vambrace.ts."
     },
     {
       "id": "headHoning",
@@ -411,7 +417,7 @@
     {
       "id": "braceletFlatWpLines",
       "exprFile": "expr/braceletFlatWpLines.ts",
-      "comment": "DPS tab M15/M17/M18/M19: every bracelet stat line granting flat Weapon Power (index-151 raw value, or a curated special-effect id from data/flat_wp_bracelet.json assuming its condition is met and stacks are maxed), packed contiguously. See expr/braceletFlatWpLines.ts."
+      "comment": "DPS tab flat-WP slots (3.8.1: M15/M17/M18/M19; 3.9.2: M15/M18/M19, M17 is the vambrace): every bracelet stat line granting flat Weapon Power (index-151 raw value, or a curated special-effect id from data/flat_wp_bracelet.json assuming its condition is met and stacks are maxed), packed contiguously. See expr/braceletFlatWpLines.ts."
     },
     {
       "id": "braceletAllyDmg",

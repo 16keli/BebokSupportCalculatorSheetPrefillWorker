@@ -100,8 +100,11 @@ export interface RefTables {
   classes?: { id: number; name: string; internal_name: string }[];
   // Bracelet special-effect ability id -> effective flat Weapon Power bonus,
   // assuming any condition is met and any stacks are maxed (data/flat_wp_bracelet.json).
-  // See expr/braceletFlatWpLines.ts (M15/M17/M18/M19 on the DPS tab).
+  // See expr/braceletFlatWpLines.ts (the DPS tab's flat-WP slots).
   flat_wp_bracelet?: Record<string, number>;
+  // Vambrace item id -> grade (epic | legend | relic | ancient), from
+  // data/vambrace.json (raw_data/Item.json category 10206). See expr/vambrace.ts.
+  vambrace?: Record<string, string>;
 }
 
 // -- Intermediate result shapes ($.<id>) ------------------------------------

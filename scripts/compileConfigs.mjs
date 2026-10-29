@@ -217,13 +217,17 @@ ${sourcesSrc}
 
 // Read every config JSON under configs/, group by `key`, compile one bundle per
 // key. (Bundles are no longer one-per-directory: a datasource's files live in
-// per-source folders, and all four share the bundle key.)
+// per-source folders, and all four share the bundle key.) A datasource's `key`
+// may be an array, sharing it across several sheet versions (each sheet version
+// is its own spreadsheet/sheet-<version>.json with a single key).
 const byKey = new Map();
 for (const file of findJsonFiles(configsDir)) {
   const data = JSON.parse(readFileSync(file, "utf8"));
   if (!data.key) continue;
-  if (!byKey.has(data.key)) byKey.set(data.key, []);
-  byKey.get(data.key).push({ data, dir: dirname(file) });
+  for (const key of [].concat(data.key)) {
+    if (!byKey.has(key)) byKey.set(key, []);
+    byKey.get(key).push({ data, dir: dirname(file) });
+  }
 }
 const bundleEntries = [...byKey.entries()]
   .map(([key, entries]) => compileBundle(key, entries))

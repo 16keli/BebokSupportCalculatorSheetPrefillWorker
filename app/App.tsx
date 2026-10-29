@@ -12,34 +12,47 @@ import type {
   SheetConfig,
 } from "./types";
 
-// Each prefill config lives as a directory under configs/<key>/ with one
-// sheet.json plus a file per datasource (snapshot/log/loadout). Group the
-// per-directory files back into ConfigBundles by their parent directory.
+// Configs live in per-datasource folders (configs/spreadsheet/sheet-<ver>.json,
+// configs/snapshot/snapshot.json, ...) and are joined into ConfigBundles by
+// their `key`. Each sheet version has its own key; a datasource's `key` may be an
+// array, sharing it across sheet versions. Mirrors scripts/compileConfigs.mjs.
 const configModules = import.meta.glob("../configs/*/*.json", {
   eager: true,
 }) as Record<string, { default: SheetConfig | DataSourceConfig }>;
 
 function assembleBundles(): ConfigBundle[] {
-  const byDir = new Map<
+  const byKey = new Map<
     string,
     { sheet?: SheetConfig; sources: DataSourceConfig[] }
   >();
-  for (const [path, mod] of Object.entries(configModules)) {
-    const dir = path.slice(0, path.lastIndexOf("/"));
-    const entry = byDir.get(dir) ?? { sources: [] };
+  const entryFor = (key: string) => {
+    const entry = byKey.get(key) ?? { sources: [] };
+    byKey.set(key, entry);
+    return entry;
+  };
+  for (const mod of Object.values(configModules)) {
     const data = mod.default as SheetConfig & DataSourceConfig;
+    if (!data.key) continue;
     if (Array.isArray(data.cells)) {
-      entry.sheet = data as SheetConfig;
+      entryFor(data.key as string).sheet = data as SheetConfig;
     } else if (data.source) {
-      entry.sources.push(data as DataSourceConfig);
+      for (const key of ([] as string[]).concat(data.key))
+        entryFor(key).sources.push(data as DataSourceConfig);
     }
-    byDir.set(dir, entry);
   }
-  return [...byDir.values()]
-    .filter((b): b is { sheet: SheetConfig; sources: DataSourceConfig[] } =>
-      Boolean(b.sheet),
-    )
-    .map((b) => ({ key: b.sheet.key, sheet: b.sheet, sources: b.sources }));
+  return (
+    [...byKey.values()]
+      .filter((b): b is { sheet: SheetConfig; sources: DataSourceConfig[] } =>
+        Boolean(b.sheet),
+      )
+      .map((b) => ({ key: b.sheet.key, sheet: b.sheet, sources: b.sources }))
+      // Newest sheet version first, so it's the default selection.
+      .sort((a, b) =>
+        b.sheet.version.localeCompare(a.sheet.version, undefined, {
+          numeric: true,
+        }),
+      )
+  );
 }
 
 const availableBundles = assembleBundles();
@@ -173,17 +186,18 @@ export default function App() {
         <div className="stage">
           <div className="stage-head">
             <span className="stage-num">00</span>
-            <span className="stage-title">Config</span>
+            <span className="stage-title">Sheet version</span>
           </div>
-          <label htmlFor="configSelect">Load a saved config</label>
+          <label htmlFor="configSelect">Bebok calculator version</label>
           <select
             id="configSelect"
             value={selectedKey}
             onChange={(e) => handleConfigChange(e.target.value)}
           >
-            {availableBundles.map((b) => (
+            {availableBundles.map((b, i) => (
               <option key={b.key} value={b.key}>
-                {b.sheet.version ? `${b.key} (v${b.sheet.version})` : b.key}
+                {b.sheet.version ? `v${b.sheet.version}` : b.key}
+                {i === 0 ? " (latest)" : ""}
               </option>
             ))}
           </select>

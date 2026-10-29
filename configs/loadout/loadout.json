@@ -1,5 +1,5 @@
 {
-  "key": "bebok-3.8.1",
+  "key": ["bebok-3.8.1", "bebok-3.9.2"],
   "source": "loadout",
   "version": {
     "supported": "v3"
